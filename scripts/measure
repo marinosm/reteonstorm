@@ -1,0 +1,58 @@
+#!/bin/bash
+
+# Fixed paths
+PROJECT_PATH=/Users/user/storm/reteonstorm
+SCRIPTS_PATH=$PROJECT_PATH/scripts
+LOGS_PATH=$PROJECT_PATH/logs
+MAVEN_JAR=$PROJECT_PATH/target/reteonstorm-1.0-SNAPSHOT-jar-with-dependencies.jar
+#also STORM_LIBS set in bash_profile
+
+# Experiment specific paths
+SUMMARY_FILE=$LOGS_PATH/summary_a
+TRIPLES_FILE=$PROJECT_PATH/resources/abcd
+LOG_FILE=$LOGS_PATH/a0
+
+# Topology structure (see diagrams)
+IDENTICAL_FILTERS=2
+FILTER_PARALLELISM=2
+NODE_SHARING=true
+
+# Input size related
+EACH_LETTER_TIMES=1 # This x 4 = input size
+TIME_TO_LIVE=100 # cluster uptime in Seconds
+EXPECTED_OUTPUT_LINES=4 # 1 line per triple in the output
+JVM_ARGS=-Xmx2G # conflict with MAVEN_OPTS (Xmx and maxPermSize) in bash_profile
+
+
+$SCRIPTS_PATH/genTriples.py $EACH_LETTER_TIMES \
+	> $TRIPLES_FILE
+
+java $JVM_ARGS -cp $MAVEN_JAR:$STORM_LIBS org.reteonstorm.TopologyMain \
+	-f $TRIPLES_FILE \
+	-ns $NODE_SHARING \
+	-n $IDENTICAL_FILTERS \
+	-fp $FILTER_PARALLELISM \
+	-ttl $TIME_TO_LIVE \
+		> $LOG_FILE
+
+echo "LOG_FILE=$LOG_FILE" \
+	>> $SUMMARY_FILE
+echo "TRIPLES_FILE=$TRIPLES_FILE" \
+	>> $SUMMARY_FILE
+echo "IDENTICAL_FILTERS=$IDENTICAL_FILTERS" \
+	>> $SUMMARY_FILE
+echo "FILTER_PARALLELISM=$FILTER_PARALLELISM" \
+	>> $SUMMARY_FILE
+echo "NODE_SHARING=$NODE_SHARING" \
+	>> $SUMMARY_FILE
+echo "EACH_LETTER_TIMES=$EACH_LETTER_TIMES - input_size=`expr $EACH_LETTER_TIMES \* 4`" \
+	>> $SUMMARY_FILE
+echo "TIME_TO_LIVE=$TIME_TO_LIVE" \
+	>> $SUMMARY_FILE
+echo "EXPECTED_OUTPUT_LINES=$EXPECTED_OUTPUT_LINES" \
+	>> $SUMMARY_FILE
+echo "JVM_ARGS=$JVM_ARGS - MAVEN_OPTS=$MAVEN_OPTS" \
+	>> $SUMMARY_FILE
+
+$SCRIPTS_PATH/summary $LOG_FILE -o $EXPECTED_OUTPUT_LINES \
+	>> $SUMMARY_FILE
