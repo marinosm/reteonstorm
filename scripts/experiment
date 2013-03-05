@@ -26,7 +26,7 @@ echo $EXPERIMENT_ID
 # Fixed vars
 EXPECTED_OUTPUT_LINES=4 # 1 line per triple in the output
 JVM_ARGS=-Xmx2G # conflict with MAVEN_OPTS (Xmx and maxPermSize) in bash_profile
-ITERATIONS=1 # measurements to take (for mean and variance)
+ITERATIONS=2 # measurements to take (for mean and variance)
 
 # Set paths
 PROJECT_PATH=/Users/user/storm/reteonstorm

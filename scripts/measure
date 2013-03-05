@@ -1,12 +1,20 @@
 #!/bin/bash
 
+# paths
+PROJECT_PATH=/Users/user/storm/reteonstorm
+SCRIPTS_PATH=${PROJECT_PATH}/scripts
+
 # input-size dependent arrays
 SIZE=( 1 )
 TIME=( 5 )
-#for i in `seq 1 15`;do
-#	SIZES[$i]=`expr $i \* 10000`
-#	TIMES[$i]=`echo "($i+2)*10" | bc`
-#done
+for i in `seq 1 5`;do
+	SIZES[$i]=`expr $i \* 10000`
+	TIMES[$i]=`echo "($i+2)*10" | bc`
+done
+for i in `seq 6 15`;do
+	SIZES[$i]=`expr $i \* 10000`
+	TIMES[$i]=`echo "($i+1)*10" | bc`
+done
 
 # input-size independent arrays
 NODES=( 2 )
@@ -16,23 +24,21 @@ FPAR=( 2 )
 for nodes in ${NODES[@]};do
 	for share in ${SHARE[@]};do
 		for fpar in ${FPAR[@]};do
-#			for i in `seq 0 ${#SIZE[@]}`;do
-			i=0
-			echo "i=$i"
+			for (( i=0; i<${#SIZE[@]}; i++ ));do
 
 				# this iteration is an experiment
 				# each experiment runs reteonstorm 5 times and produces a single summary file
 				# each "different" experiment should be given a different id (-eid)
 				# giving the same -eid would overwrite the previous logs/summary files
 
-				./experiment \
+				${SCRIPTS_PATH}/experiment \
 					-n $nodes \
 					-ns $share \
 					-fp $fpar \
 					-i ${SIZE[$i]} \
 					-ttl ${TIME[$i]} \
 					-eid "nodes${nodes}_share${share}_fpar${fpar}_size${SIZE[$i]}"
-#			done
+			done
 		done
 	done
 done
