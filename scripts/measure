@@ -8,18 +8,18 @@ SCRIPTS_PATH=${PROJECT_PATH}/scripts
 SIZE=( 1 )
 TIME=( 5 )
 for i in `seq 1 5`;do
-	SIZES[$i]=`expr $i \* 10000`
-	TIMES[$i]=`echo "($i+2)*10" | bc`
+	SIZE[$i]=`expr $i \* 10000`
+	TIME[$i]=`echo "($i+2)*10" | bc`
 done
 for i in `seq 6 15`;do
-	SIZES[$i]=`expr $i \* 10000`
-	TIMES[$i]=`echo "($i+1)*10" | bc`
+	SIZE[$i]=`expr $i \* 10000`
+	TIME[$i]=`echo "($i+1)*10" | bc`
 done
 
 # input-size independent arrays
-NODES=( 2 )
-SHARE=( true )
-FPAR=( 2 )
+NODES=( 2 3 )
+SHARE=( true false )
+FPAR=( 1 2 3 )
 
 for nodes in ${NODES[@]};do
 	for share in ${SHARE[@]};do
