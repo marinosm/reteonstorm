@@ -1,4 +1,11 @@
 #!/bin/bash
 
-# Return the ack times found in the summary file 
-awk -F\@ '/ack@/{print $2}'
+LOG_DIR=/Users/user/storm/reteonstorm/logs
+
+for logpath in `find $LOG_DIR -name "summary*"`
+do
+	logname=$(basename "$logpath")
+	echo $logname
+	cat $logpath | awk -F\@ '/ack@/{print $2}'
+	echo
+done
