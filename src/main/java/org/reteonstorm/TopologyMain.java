@@ -3,14 +3,15 @@ package org.reteonstorm;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.reteonstorm.bolts.Terminal;
+import org.apache.thrift7.TException;
+import org.reteonstorm.bolts.KestrelTerminal;
 import org.reteonstorm.bolts.TripleFilter;
-import org.reteonstorm.spouts.LineReader;
-
 import backtype.storm.Config;
 import backtype.storm.LocalCluster;
+import backtype.storm.scheme.StringScheme;
+import backtype.storm.spout.KestrelThriftSpout;
 import backtype.storm.topology.TopologyBuilder;
-import backtype.storm.tuple.Fields;
+import backtype.storm.utils.Utils;
 
 /**
  * This is to test whether there is measurable benefit in avoiding to create multiple identical Storm Bolts
@@ -30,13 +31,17 @@ import backtype.storm.tuple.Fields;
  *
  */
 public class TopologyMain {
+	private static final String KESTREL_SPOUT = "kestrel-spout";
+	private static final String INPUT_QUEUE = "inputQ";
+	private static final int KESTREL_PORT = 22133;
+	private static final String KESTREL_IP = "localhost";
 	private static final String TERMINAL_NAME = "terminal";
 	private static final String JOIN_NAME = "join";
 	private static final String FILTER_NAME = "filter";
-	private static final String SPOUT_NAME = "mixed-reader";
+	private static final String FILE_SPOUT = "mixed-reader";
 	private static final String INPUT_FILE_CONFIG = "inputFile";
-//	private static final String[] FILTER = new String[]{"?a","pred=foo","obj=0"};
-	private static final String[] FILTER = new String[]{"?a","pred=foo","?b"};
+	private static final String[] FILTER = new String[]{"?a","pred=foo","obj=0"};
+//	private static final String[] FILTER = new String[]{"?a","pred=foo","?b"};
 	
 	
 	/*
@@ -52,7 +57,7 @@ public class TopologyMain {
 	 * If this is true, only a single filter Bolt is created that emits to all Terminal Bolts
 	 * If false, multiple identical filter Bolts are created each emitting to a different Terminal Bolt
 	 */
-	private static boolean SHARING = false;
+	private static boolean SHARING = true;
 	/*
 	 * Specifies how many Terminal Bolts should be created.
 	 * Also in case SHARING is false, this also specifies how many identical Filter nodes should be created
@@ -69,7 +74,7 @@ public class TopologyMain {
 	private static String TOPOLOGY_NAME = "Node-Sharing-Evaluation";
 
 	@SuppressWarnings("unchecked")
-	public static void main(String[] args) throws InterruptedException {
+	public static void main(String[] args) throws InterruptedException, TException {
 
 		//Arguments
 		for (int i=0; i<args.length; i+=2){
@@ -81,8 +86,8 @@ public class TopologyMain {
 				NUM_OF_IDENTICAL_NODES = Integer.parseInt(args[i+1]);
 //			if (args[i].equals("-tp")) FIXME: probably fails to count when this is greater than one
 //				TERMINAL_PARALLELISM = Integer.parseInt(args[i+1]);
-//			if (args[i].equals("-sp")) TODO: each spout has its own line-counter (solve by popping of a Queue, but how about reading off the )
-//				SPOUT_PARALLELISM = Integer.parseInt(args[i+1]);
+			else if (args[i].equals("-sp")) //TODO: each spout has its own line-counter (solve by popping of a Queue, but how about reading off the )
+				SPOUT_PARALLELISM = Integer.parseInt(args[i+1]);
 			else if (args[i].equals("-fp"))
 				FILTER_PARALLELISM = Integer.parseInt(args[i+1]);
 //			if (args[i].equals("-jp")) TODO: joins not implemented yet
@@ -91,9 +96,21 @@ public class TopologyMain {
 				TIME_TO_LIVE = Integer.parseInt(args[i+1]);
 		}
 		
-		//Spout
+		//init
 		TopologyBuilder sharingBuilder = new TopologyBuilder();
-		sharingBuilder.setSpout(SPOUT_NAME,new LineReader(INPUT_FILE_CONFIG), SPOUT_PARALLELISM);
+		
+		//make this a Unit-Test
+//		SimpleKestrelClient client = new SimpleKestrelClient(KESTREL_IP, KESTREL_PORT);
+//		client.set(INPUT_QUEUE, "test");
+//		String test = client.get(INPUT_QUEUE);
+//		System.out.println("TopologyMain:result:"+test);
+//		client.close();
+//		System.exit(0);
+		
+		//Spout
+		KestrelThriftSpout kestrelSpout = new KestrelThriftSpout(KESTREL_IP, KESTREL_PORT, INPUT_QUEUE, new StringScheme());
+//		sharingBuilder.setSpout(FILE_SPOUT,new LineReader(INPUT_FILE_CONFIG), SPOUT_PARALLELISM);
+		sharingBuilder.setSpout(KESTREL_SPOUT, kestrelSpout, SPOUT_PARALLELISM);
 		
 		//Single or multiple identical Bolts (depending on whether node-sharing is enabled)
 		Object filters;
@@ -104,7 +121,7 @@ public class TopologyMain {
 				/* 
 				 * instances of the (single) filter should share the workload evenly 
 				 */
-				.shuffleGrouping(SPOUT_NAME);
+				.shuffleGrouping(KESTREL_SPOUT);
 		} else {
 			filters = new ArrayList<String>(NUM_OF_IDENTICAL_NODES);
 			
@@ -113,10 +130,12 @@ public class TopologyMain {
 				
 				sharingBuilder.setBolt(currentFilter, new TripleFilter(i, FILTER_NAME+"-"+i, FILTER), FILTER_PARALLELISM)
 					/*
-					 * Multiple Bolts doing exactly the same job on exactly the same input (redundancy)
-					 * But each of them has a number of instances that share its workload evenly
+					 * Multiple Bolts doing exactly the same job
+					 * If the spout reads from a file then input to all bolts is exactly the same (redundancy)
+					 * 
+					 * Each of them has a number of instances that share its workload evenly
 					 */
-					.shuffleGrouping(SPOUT_NAME);
+					.shuffleGrouping(KESTREL_SPOUT);
 				((List<String>) filters).add(currentFilter);
 			}
 		}
@@ -132,7 +151,7 @@ public class TopologyMain {
 				currentFilter = ((List<String>)filters).remove(0);
 //			sharingBuilder.setBolt(JOIN_NAME+"-"+i, new DummyJoin(), JOIN_PARALLELISM)
 //				.shuffleGrouping(currentFilter);
-			sharingBuilder.setBolt(TERMINAL_NAME+"-"+i, new Terminal(), TERMINAL_PARALLELISM)
+			sharingBuilder.setBolt(TERMINAL_NAME+"-"+i, new KestrelTerminal(), TERMINAL_PARALLELISM)
 //				.fieldsGrouping(currentFilter, new Fields("value=a|b")); 
 				.shuffleGrouping(currentFilter); //TODO: should also be tested with fieldsGrouping (not trivial!) and allGrouping
 		}
@@ -149,7 +168,7 @@ public class TopologyMain {
 
 //		System.out.println("marinos:topology-submitted@"+new Timestamp(System.currentTimeMillis()));
 		
-		Thread.sleep(TIME_TO_LIVE*1000); //Utils.sleep(10000);
+		Utils.sleep(TIME_TO_LIVE*1000);
 		cluster.killTopology(TOPOLOGY_NAME);
 		cluster.shutdown();
 	}

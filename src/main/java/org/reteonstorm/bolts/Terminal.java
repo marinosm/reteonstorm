@@ -39,7 +39,7 @@ public class Terminal extends BaseBasicBolt {
 		@SuppressWarnings("unchecked")
 		TimedBindings tuple = new TimedBindings(
 				(Map<String,String>)input.getValue(0), 
-				new Timestamp(System.currentTimeMillis()) //FIXME: what happens when deployed on >1 machines
+				new Timestamp(System.currentTimeMillis()) //FIXME: what happens when deployed to >1 machines
 				); 
 		received.add(tuple);
 		

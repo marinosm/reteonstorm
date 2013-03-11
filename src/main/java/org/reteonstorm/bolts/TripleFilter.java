@@ -39,7 +39,6 @@ public class TripleFilter extends BaseBasicBolt {
         if (triple.length != 3)
         	throw new IllegalArgumentException("Line is not a triple: "+input);
         
-        //two loops just to avoid creating objects if not needed (predictability)
         boolean triplePassesFilters = true;
         for (int i=0; i<3; i++)
         	if (filters[i].charAt(0)!='?' && !triple[i].equals(filters[i])){
@@ -47,15 +46,13 @@ public class TripleFilter extends BaseBasicBolt {
         		break;
         	}
         
-        //TODO: extremely small hashmap, probably more efficient to use a List-of-tuples or TreeMap
-        Map<String, String> bindings = new HashMap<String, String>(3); //TODO not 3 => wasting space
+        Map<String, String> bindings = new HashMap<String, String>(3);
         if (triplePassesFilters){
         	for (int i=0; i<3; i++)
         		if (filters[i].charAt(0)=='?')
         			bindings.put(filters[i], triple[i]);
         	collector.emit(new Values(bindings, bindings.containsValue("subj=a") || bindings.containsValue("subj=b")));
         }
-        //FIXME: need to always ack
 	}
 	
 	@Override
