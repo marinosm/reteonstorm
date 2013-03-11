@@ -8,7 +8,11 @@ last_ack_in_millis=`cat $1 | awk '/Acking/{print $1}' | tail -1`
 last_ack_in_seconds=`echo "scale=3;${last_ack_in_millis}/1000" | bc`
 echo last_ack@${last_ack_in_seconds}
 
-cat $1 | grep Exception
+if [[ `grep -m 1 -i "fail" < $1` ]]; then
+	echo FAILURES EXIST
+fi
+
+grep Exception < $1
 
 if [ "$2" = "-o" ] ; then 
   cat $1 | grep -A `expr $3 + 1` \<result 
