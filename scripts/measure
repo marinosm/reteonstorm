@@ -7,24 +7,26 @@ SCRIPTS_PATH=${PROJECT_PATH}/scripts
 # input-size dependent arrays
 SIZE=( 1 )
 TIME=( 5 )
-for i in `seq 1 5`;do
-	SIZE[$i]=`expr $i \* 10000`
-	TIME[$i]=`echo "($i+2)*10" | bc`
-done
-for i in `seq 6 15`;do
-	SIZE[$i]=`expr $i \* 10000`
-	TIME[$i]=`echo "($i+1)*10" | bc`
+i=1
+for s in `seq 5 5`;do
+	SIZE[$i]=`expr $s \* 10000`
+	TIME[$i]=`echo "($s+0)*20" | bc`
+	(( i++ ))
 done
 
 # input-size independent arrays
-NODES=( 2 3 )
-SHARE=( true false )
-FPAR=( 1 2 3 )
+NODES=( 2 )
+SHARE=( false )
+FPAR=( 2 )
 
 for nodes in ${NODES[@]};do
 	for share in ${SHARE[@]};do
 		for fpar in ${FPAR[@]};do
+			#if [ $share == true ] && [ $fpar -eq 2 ]; then continue fi
 			for (( i=0; i<${#SIZE[@]}; i++ ));do
+
+				date
+				echo "i=$i" "size[i]=${SIZE[$i]}" "time[i]=${TIME[$i]}"
 
 				# this iteration is an experiment
 				# each experiment runs reteonstorm 5 times and produces a single summary file

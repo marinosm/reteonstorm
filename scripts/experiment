@@ -1,8 +1,8 @@
 #!/bin/bash
 
 if [ "$#" == "0" ]; then
-	echo "Experiment not given any arguments. Exiting..."
-	exit 1
+	echo Example Usage: experiment -n 2 -ns true -fp 2 -i 50000 -ttl 100 -eid nodes2_sharetrue_fpar2_size50000 
+	exit 0
 fi
 
 while (( "$#" )); do
@@ -63,7 +63,8 @@ $SCRIPTS_PATH/genTriples.py $EACH_LETTER_TIMES \
 
 for i in `seq 1 $ITERATIONS`
 do
-echo iteration $i
+	echo iteration $i
+
 	# Append iteration id to summary file
 	echo "ITERATION=$i" \
 		>> $SUMMARY_FILE
@@ -78,8 +79,7 @@ echo iteration $i
 		-fp $FILTER_PARALLELISM \
 		-ttl $TIME_TO_LIVE \
 			> $LOG_FILE
-
-	# Append summary to summary file
+	
 	$SCRIPTS_PATH/summary $LOG_FILE -o $EXPECTED_OUTPUT_LINES \
 		>> $SUMMARY_FILE
 done
