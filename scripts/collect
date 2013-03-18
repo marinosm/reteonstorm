@@ -1,11 +1,1 @@
-#!/bin/bash
-
-LOG_DIR=/Users/user/storm/reteonstorm/logs
-
-for logpath in `find $LOG_DIR -name "summary*"`
-do
-	logname=$(basename "$logpath")
-	echo $logname
-	cat $logpath | awk -F\@ '/ack@/{print $2}'
-	echo
-done
+awk -F\= '/lastack-firstemit=/{print $2}'

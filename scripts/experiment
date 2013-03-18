@@ -1,86 +1,77 @@
 #!/bin/bash
 
-if [ "$#" == "0" ]; then
-	echo Example Usage: experiment -n 2 -ns true -fp 2 -i 50000 -ttl 100 -eid nodes2_sharetrue_fpar2_size50000 
-	exit 0
-fi
+JVM_ARGS=-Xmx2G # conflict with MAVEN_OPTS (Xmx and maxPermSize) in bash_profile
+MAVEN_JAR=${RETEONSTORM}/target/reteonstorm-1.0-SNAPSHOT-jar-with-dependencies.jar
+SUBJECTSxPREDICATES=6 # Subjects and Objects are hard-coded in TopologyMain
+ITERATIONS=5 # how many times to run and log this experiment
+#TRIPLES_FILE=${RETEONSTORM}/resources/abcd
+#EXPECTED_OUTPUT_LINES=4 # 1 line per triple in the output
 
-while (( "$#" )); do
+while (( "$#" )) ; do
 	if [ $1 == "-eid" ]; then
 		EXPERIMENT_ID=$2
 	elif [ $1 == "-n" ]; then
 		IDENTICAL_FILTERS=$2
-	elif [ $1 == "-fp" ]; then
-		FILTER_PARALLELISM=$2
 	elif [ $1 == "-ns" ]; then
 		NODE_SHARING=$2
+	elif [ $1 == "-F" ]; then
+		FILTER=$2
+	elif [ $1 == "-sp" ]; then
+		SPOUT_PARALLELISM=$2
+	elif [ $1 == "-fp" ]; then
+		FILTER_PARALLELISM=$2
+	elif [ $1 == "-tp" ]; then
+		TERMINAL_PARALLELISM=$2
 	elif [ $1 == "-i" ]; then
-		EACH_LETTER_TIMES=$2 # This x 4 = input size
+		NUM_OF_OBJECTS=$2 # This x 4 = input size
 	elif [ $1 == "-ttl" ]; then
 		TIME_TO_LIVE=$2 # cluster uptime in Seconds
 	fi
-	shift
-	shift
+	shift; shift
 done
-echo $EXPERIMENT_ID
 
-# Fixed vars
-EXPECTED_OUTPUT_LINES=4 # 1 line per triple in the output
-JVM_ARGS=-Xmx2G # conflict with MAVEN_OPTS (Xmx and maxPermSize) in bash_profile
-ITERATIONS=5 # measurements to take (for mean and variance)
+SUMMARY_FILE=${ROS_LOGS}/summary_${EXPERIMENT_ID}
+echo $SUMMARY_FILE
+							rm -f $SUMMARY_FILE
+cat <<-EOF						>> $SUMMARY_FILE
+	IDENTICAL_FILTERS=$IDENTICAL_FILTERS
+	NODE_SHARING=$NODE_SHARING
+	FILTER=$FILTER
+	SPOUT_PARALLELISM=$SPOUT_PARALLELISM
+	FILTER_PARALLELISM=$FILTER_PARALLELISM
+	TERMINAL_PARALLELISM=$TERMINAL_PARALLELISM
+	NUM_OF_OBJECTS=$NUM_OF_OBJECTS - input_size=`expr $NUM_OF_OBJECTS \* $SUBJECTSxPREDICATES`
+	TIME_TO_LIVE=$TIME_TO_LIVE
+	JVM_ARGS=$JVM_ARGS - MAVEN_OPTS=$MAVEN_OPTS
 
-# Set paths
-PROJECT_PATH=/Users/user/storm/reteonstorm
-SCRIPTS_PATH=${PROJECT_PATH}/scripts
-LOGS_PATH=${PROJECT_PATH}/logs
-MAVEN_JAR=${PROJECT_PATH}/target/reteonstorm-1.0-SNAPSHOT-jar-with-dependencies.jar
-#also STORM_LIBS set in bash_profile
-SUMMARY_FILE=${LOGS_PATH}/summary_${EXPERIMENT_ID}
-TRIPLES_FILE=${PROJECT_PATH}/resources/abcd
-
-# Create/Replace summary file and append variables before executing
-echo "TRIPLES_FILE=$TRIPLES_FILE" \
-	> $SUMMARY_FILE
-echo "IDENTICAL_FILTERS=$IDENTICAL_FILTERS" \
-	>> $SUMMARY_FILE
-echo "FILTER_PARALLELISM=$FILTER_PARALLELISM" \
-	>> $SUMMARY_FILE
-echo "NODE_SHARING=$NODE_SHARING" \
-	>> $SUMMARY_FILE
-echo "EACH_LETTER_TIMES=$EACH_LETTER_TIMES - input_size=`expr $EACH_LETTER_TIMES \* 4`" \
-	>> $SUMMARY_FILE
-echo "TIME_TO_LIVE=$TIME_TO_LIVE" \
-	>> $SUMMARY_FILE
-echo "EXPECTED_OUTPUT_LINES=$EXPECTED_OUTPUT_LINES" \
-	>> $SUMMARY_FILE
-echo "JVM_ARGS=$JVM_ARGS - MAVEN_OPTS=$MAVEN_OPTS" \
-	>> $SUMMARY_FILE
-echo >> $SUMMARY_FILE #newline
+	EOF
+	#EXPECTED_OUTPUT_LINES=$EXPECTED_OUTPUT_LINES
 
 # Generate the input file
-$SCRIPTS_PATH/genTriples.py $EACH_LETTER_TIMES \
-	> $TRIPLES_FILE
+# ${ROS_SCRIPTS}/genTriples.py $NUM_OF_OBJECTS 	> $TRIPLES_FILE
 
-for i in `seq 1 $ITERATIONS`
-do
-	echo iteration $i
+for i in `seq 1 $ITERATIONS` ; do
+	echo "ITERATION=$i" 				>> $SUMMARY_FILE
 
-	# Append iteration id to summary file
-	echo "ITERATION=$i" \
-		>> $SUMMARY_FILE
+	LOG_FILE="${ROS_LOGS}/${EXPERIMENT_ID}-${i}"
+	echo $LOG_FILE
 
-	# Execute and create log file
-	LOG_FILE="${LOGS_PATH}/${EXPERIMENT_ID}-${i}"
-
-	java $JVM_ARGS -cp ${MAVEN_JAR}:${STORM_LIBS} org.reteonstorm.TopologyMain \
-		-f $TRIPLES_FILE \
-		-ns $NODE_SHARING \
+	java $JVM_ARGS -cp ${MAVEN_JAR} org.reteonstorm.TopologyMain \
 		-n $IDENTICAL_FILTERS \
+		-ns $NODE_SHARING \
+		-F $FILTER \
+		-sp $SPOUT_PARALLELISM \
 		-fp $FILTER_PARALLELISM \
-		-ttl $TIME_TO_LIVE \
-			> $LOG_FILE
+		-tp $TERMINAL_PARALLELISM \
+		-i $NUM_OF_OBJECTS \
+		-ttl $TIME_TO_LIVE 			> $LOG_FILE
+			# -f $TRIPLES_FILE
+			# :${STORM_LIBS}
 	
-	$SCRIPTS_PATH/summary $LOG_FILE -o $EXPECTED_OUTPUT_LINES \
-		>> $SUMMARY_FILE
+	cat <<-EOF 					>> $SUMMARY_FILE
+		`${ROS_SCRIPTS}/summary $LOG_FILE -c $IDENTICAL_FILTERS`
+		
+		EOF
+	# -o EXPECTED_OUTPUT_LINE give/take 1
 done
-echo experiment done
+echo "experiment done"

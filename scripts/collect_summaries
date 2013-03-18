@@ -1,0 +1,8 @@
+#!/bin/bash
+
+for summarypath in `find $ROS_LOGS -name "summary*"`
+do
+	summaryname=`basename "$summarypath"`
+	echo $summaryname
+	${ROS_SCRIPTS}/collect < $summarypath
+done

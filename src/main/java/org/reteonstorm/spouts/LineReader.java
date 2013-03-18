@@ -23,7 +23,7 @@ public class LineReader extends BaseRichSpout {
 
 	private String inputFile;
 	private SpoutOutputCollector collector;
-	private FileReader fileReader;
+	private BufferedReader heldReader;
 	private boolean completed = false;
 	
 	public LineReader(String inputFile){
@@ -63,11 +63,11 @@ public class LineReader extends BaseRichSpout {
 		}
 		String str;
 		//Open the reader
-		BufferedReader reader = new BufferedReader(fileReader);
 		try{
 			//Read all lines
-			if((str = reader.readLine()) != null){
+			if((str = heldReader.readLine()) != null){
 				if ((str = str.trim()).length() > 0){
+					System.out.println("LineReader:line="+str);
 //					System.out.println("marinos::spout-emit::"+str+"@"+new Timestamp(System.currentTimeMillis()));
 					this.collector.emit(new Values(str),str);
 					countEmits++;
@@ -77,11 +77,11 @@ public class LineReader extends BaseRichSpout {
 				}
 			}else{
 				logger.info("LineReader.nextTuple():BufferedReader returned null");
+				completed = true;
 			}
 		}catch(Exception e){
 			throw new RuntimeException("Error reading tuple",e);
 		}finally{
-			completed = true;
 		}
 	}
 
@@ -91,7 +91,7 @@ public class LineReader extends BaseRichSpout {
 	public void open(@SuppressWarnings("rawtypes") Map conf, TopologyContext context,
 			SpoutOutputCollector collector) {
 		try {
-			this.fileReader = new FileReader(conf.get(inputFile).toString());
+			this.heldReader = new BufferedReader(new FileReader(conf.get(inputFile).toString()));
 		} catch (FileNotFoundException e) {
 			throw new RuntimeException("Error reading file ["+conf.get("wordFile")+"]");
 		}

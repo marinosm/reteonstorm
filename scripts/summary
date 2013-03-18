@@ -1,21 +1,53 @@
 #!/bin/bash
 
-# $1 = log file to summarise (ie. to print last Ack time and any Exceptions)
-# $2 = if this is equal to -o, summary includes <result> and $3 is necessary
-# $3 = expected lines between <result> and </result> (non-inclusive)
+# $1 = log file to summarise
+# $2 = if this is equal to -o then summary should include <result> tags and $3 is necessary
+#      if equal to -k then the user will be informed if "Results_OK" is not found
+#      if -c then $3 ExpectedResultSize (in the log file) will be compared to all CounterTerminal counts (in the log file)
+#           results will be accepted iff $3 correct counts are found
+# ($3) = expected lines between <result> and </result> (non-inclusive)
+#        or expected correct CounterTerminal counts
 
-last_ack_in_millis=`cat $1 | awk '/Acking/{print $1}' | tail -1`
-last_ack_in_seconds=`echo "scale=3;${last_ack_in_millis}/1000" | bc`
-echo last_ack@${last_ack_in_seconds}
+###################
 
-if [[ `grep -m 1 -i "fail" < $1` ]]; then
-	echo FAILURES EXIST
+first_emit_msec=`cat $1 | grep -F -m 1 \"startup\" | awk '{print $1}'`
+last_ack_msec=`cat $1 | awk '/Acking/{print $1}' | tail -1`
+if [ -n first_emit_msec ] && [ -n last_ack_msec ]; then
+	diff_msec=`expr $last_ack_msec - $first_emit_msec`
+	diff_sec=`echo "scale=3;${diff_msec}/1000" | bc`
+	echo "lastack-firstemit=${diff_sec}"
+else
+	echo "first_emit=$first_emit_msec"
+	echo "last_ack=$last_ack_msec"
 fi
 
-grep Exception < $1
+###################
 
-if [ "$2" = "-o" ] ; then 
-  cat $1 | grep -A `expr $3 + 1` \<result 
+if grep -Fq "FAIL" < $1 ; then
+	echo "FAILURES exist"
 fi
 
-echo
+###################
+
+grep -F "Exception" < $1
+
+###################
+
+if [ "$2" == "-o" ] ; then 
+	grep -A `expr $3 + 1` \<result < $1
+elif [ "$2" == "-k" ] ; then
+	grep -F "Results_OK" $1
+elif [ "$2" == "-c" ] ; then
+	expected_value=`cat $1 | grep -F "ExpectedResultSize" | cut -d'=' -f2`
+	results=`cat $1 | grep -F "CounterTerminal" | cut -d'=' -f2`
+	correct_results=`grep -wF "$expected_value" < $results`
+	if [ `wc -l < $correct_results` == $3 ]; then
+		echo "results OK"
+	else
+		echo "results are NOT ok!"
+	fi
+else
+	echo "Didn't check results. See scripts/summary"
+fi
+
+###################

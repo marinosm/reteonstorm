@@ -84,6 +84,12 @@
 			<artifactId>storm-kestrel</artifactId>
 			<version>0.7.2-SNAPSHOT</version>
 		</dependency>
+		<dependency>
+			<groupId>org.openimaj.storm</groupId>
+			<artifactId>core-storm</artifactId>
+			<version>1.0.6-SNAPSHOT</version>
+			<scope>compile</scope>
+		</dependency>
 	</dependencies>
 
 	<build>

@@ -1,47 +1,77 @@
 #!/bin/bash
 
-# paths
-PROJECT_PATH=/Users/user/storm/reteonstorm
-SCRIPTS_PATH=${PROJECT_PATH}/scripts
+BUILD_LOG=${ROS_LOGS}/mvn_build_log
+
+if [ "$1" == "-c" ]; then
+    cd $RETEONSTORM
+    echo "Compiling..."
+    if mvn clean install > $BUILD_LOG ; then
+        echo "mvn build success"
+    else
+        cat $BUILD_LOG
+        exit
+    fi
+elif [ "$1" == "-c!" ]; then
+    echo "reusing previously build jar"
+else
+    echo "Missing argument: Re-run using either -c or -c! "
+    exit
+fi
+    
+more=false
 
 # input-size dependent arrays
-SIZE=( 1 )
-TIME=( 5 )
-i=1
-for s in `seq 5 5`;do
-	SIZE[$i]=`expr $s \* 10000`
-	TIME[$i]=`echo "($s+0)*20" | bc`
-	(( i++ ))
-done
+SIZE=( 10 ) # SIZE:index 0 -> value foo
+TIME=( 6 ) # TIME:index 0 -> value foo
+
+if $more ; then
+    i=1
+    for s in `seq 1 1`;do # append values for indexes 1..x
+        SIZE[$i]=`expr $s \* 10000`
+        TIME[$i]=10 # `echo "($s+0)*30" | bc`
+        (( i++ ))
+    done
+fi
 
 # input-size independent arrays
-NODES=( 2 )
-SHARE=( false )
-FPAR=( 2 )
+NODES=( 2 4 )
+SHARE=( false true )
+FILTER=( ?a_foo_0 ?a_foo_?b )
+SPAR=( 1 2 4 )
+FPAR=( 1 2 4 )
+TPAR=( 1 )
 
 for nodes in ${NODES[@]};do
-	for share in ${SHARE[@]};do
-		for fpar in ${FPAR[@]};do
-			#if [ $share == true ] && [ $fpar -eq 2 ]; then continue fi
-			for (( i=0; i<${#SIZE[@]}; i++ ));do
+    for share in ${SHARE[@]};do
+        for filter in ${FILTER[@]};do
+            for spar in ${SPAR[@]};do
+                for fpar in ${FPAR[@]};do
+                    for tpar in ${TPAR[@]};do
+                        #if [ $share == true ] && [ $fpar -eq 2 ]; then continue fi
+                        for (( i=0; i<${#SIZE[@]}; i++ ));do
 
-				date
-				echo "i=$i" "size[i]=${SIZE[$i]}" "time[i]=${TIME[$i]}"
-
-				# this iteration is an experiment
-				# each experiment runs reteonstorm 5 times and produces a single summary file
-				# each "different" experiment should be given a different id (-eid)
-				# giving the same -eid would overwrite the previous logs/summary files
-
-				${SCRIPTS_PATH}/experiment \
-					-n $nodes \
-					-ns $share \
-					-fp $fpar \
-					-i ${SIZE[$i]} \
-					-ttl ${TIME[$i]} \
-					-eid "nodes${nodes}_share${share}_fpar${fpar}_size${SIZE[$i]}"
-			done
-		done
-	done
+                            date
+            
+                            # this iteration is an experiment
+                            # each experiment runs reteonstorm 5 times and produces a single summary file
+                            # each "different" experiment should be given a different id (-eid)
+                            # giving the same -eid would overwrite the previous logs and log-summary
+        
+                            ${ROS_SCRIPTS}/experiment \
+                                -n $nodes \
+                                -ns $share \
+                                -F $filter \
+                                -sp $spar \
+                                -fp $fpar \
+                                -tp $tpar \
+                                -i ${SIZE[$i]} \
+                                -ttl ${TIME[$i]} \
+                                -eid "nodes${nodes}_share${share}_filter${filter}_spar${spar}_fpar${fpar}_tpar${tpar}_size${SIZE[$i]}"
+                        done
+                    done
+                done
+            done
+        done
+    done
 done
-echo measure done
+echo "measure done"
