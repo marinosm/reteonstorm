@@ -1,77 +1,71 @@
 #!/bin/bash
 
-BUILD_LOG=${ROS_LOGS}/mvn_build_log
+JVM_ARGS=-Xmx2G # conflict with MAVEN_OPTS (Xmx and maxPermSize) in bash_profile
+MAVEN_JAR=${RETEONSTORM}/target/reteonstorm-1.0-SNAPSHOT-jar-with-dependencies.jar
+SUBJECTSxPREDICATES=6 # Subjects and Objects are hard-coded in TopologyMain
+ITERATION_START=1 # iteration becomes part of the log filename so start/end with different numbers
+ITERATION_END=4 # to avoid overwriting identical measurements and make possible to take the average later
+#TRIPLES_FILE=${RETEONSTORM}/resources/abcd
+#EXPECTED_OUTPUT_LINES=4 # 1 line per triple in the output
 
-if [ "$1" == "-c" ]; then
-    cd $RETEONSTORM
-    echo "Compiling..."
-    if mvn clean install > $BUILD_LOG ; then
-        echo "mvn build success"
-    else
-        cat $BUILD_LOG
-        exit
-    fi
-elif [ "$1" == "-c!" ]; then
-    echo "reusing previously build jar"
-else
-    echo "Missing argument: Re-run using either -c or -c! "
-    exit
-fi
-    
-more=false
-
-# input-size dependent arrays
-SIZE=( 10 ) # SIZE:index 0 -> value foo
-TIME=( 6 ) # TIME:index 0 -> value foo
-
-if $more ; then
-    i=1
-    for s in `seq 1 1`;do # append values for indexes 1..x
-        SIZE[$i]=`expr $s \* 10000`
-        TIME[$i]=10 # `echo "($s+0)*30" | bc`
-        (( i++ ))
-    done
-fi
-
-# input-size independent arrays
-NODES=( 2 4 )
-SHARE=( false true )
-FILTER=( ?a_foo_0 ?a_foo_?b )
-SPAR=( 1 2 4 )
-FPAR=( 1 2 4 )
-TPAR=( 1 )
-
-for nodes in ${NODES[@]};do
-    for share in ${SHARE[@]};do
-        for filter in ${FILTER[@]};do
-            for spar in ${SPAR[@]};do
-                for fpar in ${FPAR[@]};do
-                    for tpar in ${TPAR[@]};do
-                        #if [ $share == true ] && [ $fpar -eq 2 ]; then continue fi
-                        for (( i=0; i<${#SIZE[@]}; i++ ));do
-
-                            date
-            
-                            # this iteration is an experiment
-                            # each experiment runs reteonstorm 5 times and produces a single summary file
-                            # each "different" experiment should be given a different id (-eid)
-                            # giving the same -eid would overwrite the previous logs and log-summary
-        
-                            ${ROS_SCRIPTS}/experiment \
-                                -n $nodes \
-                                -ns $share \
-                                -F $filter \
-                                -sp $spar \
-                                -fp $fpar \
-                                -tp $tpar \
-                                -i ${SIZE[$i]} \
-                                -ttl ${TIME[$i]} \
-                                -eid "nodes${nodes}_share${share}_filter${filter}_spar${spar}_fpar${fpar}_tpar${tpar}_size${SIZE[$i]}"
-                        done
-                    done
-                done
-            done
-        done
-    done
+while (( "$#" )) ; do
+	if [ $1 == "-mid" ]; then
+		MEASUREMENT_ID=$2
+	elif [ $1 == "-n" ]; then
+		IDENTICAL_FILTERS=$2
+	elif [ $1 == "-ns" ]; then
+		NODE_SHARING=$2
+	elif [ $1 == "-F" ]; then
+		FILTER=$2
+	elif [ $1 == "-sp" ]; then
+		SPOUT_PARALLELISM=$2
+	elif [ $1 == "-fp" ]; then
+		FILTER_PARALLELISM=$2
+	elif [ $1 == "-tp" ]; then
+		TERMINAL_PARALLELISM=$2
+	elif [ $1 == "-i" ]; then
+		NUM_OF_OBJECTS=$2 # This x 4 = input size
+	elif [ $1 == "-ttl" ]; then
+		TIME_TO_LIVE=$2 # cluster uptime in Seconds
+	fi
+	shift; shift
 done
-echo "measure done"
+
+SUMMARY_FILE=${ROS_LOGS}/summary_${MEASUREMENT_ID}
+echo $SUMMARY_FILE
+
+cat <<-EOF						>> $SUMMARY_FILE
+	NUM_OF_OBJECTS=$NUM_OF_OBJECTS - input_size=`expr $NUM_OF_OBJECTS \* $SUBJECTSxPREDICATES`
+	TIME_TO_LIVE=$TIME_TO_LIVE
+	JVM_ARGS=$JVM_ARGS - MAVEN_OPTS=$MAVEN_OPTS
+
+	EOF
+	#EXPECTED_OUTPUT_LINES=$EXPECTED_OUTPUT_LINES
+
+# Generate the input file
+# ${ROS_SCRIPTS}/generate_triples.py $NUM_OF_OBJECTS 	> $TRIPLES_FILE
+
+for i in `seq $ITERATION_START $ITERATION_END` ; do
+	echo "ITERATION=$i" 				>> $SUMMARY_FILE
+
+	LOG_FILE="${ROS_LOGS}/${MEASUREMENT_ID}-${i}"
+	echo $LOG_FILE
+
+	java $JVM_ARGS -cp ${MAVEN_JAR} org.reteonstorm.TopologyMain \
+		-n $IDENTICAL_FILTERS \
+		-ns $NODE_SHARING \
+		-F $FILTER \
+		-sp $SPOUT_PARALLELISM \
+		-fp $FILTER_PARALLELISM \
+		-tp $TERMINAL_PARALLELISM \
+		-i $NUM_OF_OBJECTS \
+		-ttl $TIME_TO_LIVE 			> $LOG_FILE
+			# -f $TRIPLES_FILE
+			# :${STORM_LIBS}
+	
+	cat <<-EOF 					>> $SUMMARY_FILE
+		`${ROS_SCRIPTS}/summary $LOG_FILE -c $IDENTICAL_FILTERS`
+		
+		EOF
+done
+echo "measurement done."

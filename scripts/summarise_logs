@@ -1,0 +1,13 @@
+#!/bin/bash
+
+IDENTICAL_NODES=$1
+
+for file in `ls ${ROS_LOGS}/nodes$IDENTICAL_NODES*`; do
+	experiment_id=`echo $(basename $file) | cut -d'-' -f1`
+	summary_file=${ROS_LOGS}/summary_${experiment_id}
+	touch $summary_file
+	cat <<-EOF >> $summary_file
+		`${ROS_SCRIPTS}/summary $file -c $IDENTICAL_NODES`
+		
+		EOF
+done

@@ -1,0 +1,10 @@
+#!/bin/bash
+
+for summarypath in `find $ROS_LOGS -name "summary*"`
+do
+	mean=`${ROS_SCRIPTS}/collect < $summarypath | ${ROS_SCRIPTS}/mean.py`
+
+	summaryname=`basename "$summarypath"`
+
+	echo $mean $summaryname
+done

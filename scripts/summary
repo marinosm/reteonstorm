@@ -23,9 +23,10 @@ fi
 
 ###################
 
-if grep -Fq "FAIL" < $1 ; then
-	echo "FAILURES exist"
-fi
+#"FAIL" printed by FileReader Spout only
+#if grep -Fq "FAIL" < $1 ; then
+#	echo "FAILURES exist"
+#fi
 
 ###################
 
@@ -39,9 +40,8 @@ elif [ "$2" == "-k" ] ; then
 	grep -F "Results_OK" $1
 elif [ "$2" == "-c" ] ; then
 	expected_value=`cat $1 | grep -F "ExpectedResultSize" | cut -d'=' -f2`
-	results=`cat $1 | grep -F "CounterTerminal" | cut -d'=' -f2`
-	correct_results=`grep -wF "$expected_value" < $results`
-	if [ `wc -l < $correct_results` == $3 ]; then
+	correct_results=`cat $1 | grep -e '^CounterTerminal[0-9]*: partialCount' | sort | ${ROS_SCRIPTS}/addup_partial.pl | grep -F "count=$expected_value" | wc -l`
+	if [ $correct_results == "$3" ]; then  #notice $correct_results doesn't have double quotes around it
 		echo "results OK"
 	else
 		echo "results are NOT ok!"
