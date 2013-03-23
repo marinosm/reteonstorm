@@ -11,12 +11,14 @@ import backtype.storm.tuple.Values;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * @author Marinos Mavrommatis
+ */
 public class TripleFilter extends BaseBasicBolt {
 	private static final long serialVersionUID = -6343942346452143072L;
 
 	private final String delim;
 	private final char varIndicator;
-
 	private final String[] filters;
 
 
@@ -34,7 +36,7 @@ public class TripleFilter extends BaseBasicBolt {
 
 		if (subjPredObj.length != 3)
 			throw new IllegalArgumentException(
-					"subjPredObj argument must be a String array with three (possibly null) entries. Given String array of length "
+					"subjPredObj must be a String array of size 3. Given array of length "
 							+subjPredObj.length);
 
 		this.filters = subjPredObj;
@@ -44,7 +46,7 @@ public class TripleFilter extends BaseBasicBolt {
 		String line = input.getString(0);
 		String[] triple = line.split(delim);
 		if (triple.length != 3)
-			throw new IllegalArgumentException("Line is not a triple: "+input);
+			throw new RuntimeException("Line is not a triple: "+input);
 
 		boolean triplePassesFilters = true;
 		for (int i=0; i<3; i++){
@@ -54,8 +56,8 @@ public class TripleFilter extends BaseBasicBolt {
 			}
 		}
 
-		Map<String, String> bindings = new HashMap<String, String>(3);
 		if (triplePassesFilters){
+			Map<String, String> bindings = new HashMap<String, String>(3);
 			for (int i=0; i<3; i++)
 				if (filters[i].charAt(0)==varIndicator)
 					bindings.put(filters[i], triple[i]);

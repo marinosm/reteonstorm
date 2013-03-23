@@ -8,9 +8,7 @@ import backtype.storm.topology.base.BaseBasicBolt;
 import backtype.storm.tuple.Tuple;
 
 /**
- * 
  * @author Marinos Mavrommatis
- *
  */
 public class CounterTerminal extends BaseBasicBolt {
 	private static final long serialVersionUID = 6037623011308690311L;
@@ -30,7 +28,7 @@ public class CounterTerminal extends BaseBasicBolt {
 	@SuppressWarnings("unchecked")
 	@Override
 	public void execute(Tuple input, BasicOutputCollector collector) {
-		System.out.println("CounterTerminal"+id+": received="+(Map<String,String>) input.getValue(0)); //TODO remove
+		System.out.println("Received="+(Map<String,String>)input.getValue(0)+"CounterTerminal"+id); //TODO logger.debug
 		count++;
 	}
 
@@ -39,6 +37,6 @@ public class CounterTerminal extends BaseBasicBolt {
 
 	@Override
 	public void cleanup() {
-		System.out.println("CounterTerminal"+id+": count="+count);
+		System.out.println("CounterTerminal"+id+": partialCount="+count);
 	}
 }

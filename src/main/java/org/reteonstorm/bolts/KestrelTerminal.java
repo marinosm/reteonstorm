@@ -4,7 +4,6 @@ import java.util.Map;
 
 import org.apache.thrift7.TException;
 
-import org.openimaj.kestrel.SimpleKestrelClient;
 import org.reteonstorm.TopologyMain;
 
 import backtype.storm.spout.KestrelThriftClient;
@@ -16,11 +15,9 @@ import backtype.storm.tuple.Tuple;
 
 public class KestrelTerminal extends BaseBasicBolt {
 	private static final long serialVersionUID = -7711580647434264410L;
-	private static final String KESTREL_IP = "localhost";
-	private static final int KESTREL_MEMCACHED_PORT = 22133;
-		private KestrelThriftClient client;
-//	private SimpleKestrelClient client;
 	private final String outputQ;
+	private long count;
+	private KestrelThriftClient client;
 
 	public KestrelTerminal(String outputQ) {
 		this.outputQ = outputQ;
@@ -28,15 +25,12 @@ public class KestrelTerminal extends BaseBasicBolt {
 
 	@Override
 	public void prepare(@SuppressWarnings("rawtypes") Map stormConf, TopologyContext context) {
-				try {
-					client = new KestrelThriftClient(TopologyMain.KESTREL_IP, TopologyMain.KESTREL_THRIFT_PORT);
-					client.delete_queue(outputQ);
-				} catch (TException e) {
-					e.printStackTrace();
-				}
-//		client = new SimpleKestrelClient(KESTREL_IP, KESTREL_MEMCACHED_PORT);
-//		client.delete(outputQ);
-		//		client.close();
+		count=0;
+		 try {
+			client = new KestrelThriftClient(TopologyMain.KESTREL_IP, TopologyMain.KESTREL_THRIFT_PORT);
+		} catch (TException e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Override
@@ -46,14 +40,12 @@ public class KestrelTerminal extends BaseBasicBolt {
 		Map<String,String> tuple = (Map<String,String>)input.getValue(0);
 		//		System.out.println("KestrelTerminal(ouputQ="+outputQ+"): execute: "+tuple.toString());
 
-		//		client = new SimpleKestrelClient(KESTREL_IP, KESTREL_MEMCACHED_PORT);
-//		client.set(outputQ, tuple.toString());
-		//		client.close();
-				try {
-					client.put(outputQ, tuple.toString(), 0);
-				} catch (TException e) {
-					e.printStackTrace();
-				}
+		try {
+			client.put(outputQ, tuple.toString(), 0);
+		} catch (TException e) {
+			e.printStackTrace();
+		}
+		count++;
 	}
 
 	@Override
@@ -62,6 +54,7 @@ public class KestrelTerminal extends BaseBasicBolt {
 	@Override
 	public void cleanup() {	
 		client.close();
+		System.out.println("outputQ="+outputQ+" partial_count="+count);
 	}
 
 }
