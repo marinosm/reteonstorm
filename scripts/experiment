@@ -20,9 +20,9 @@ fi
     
 more=false
 
-# input-size dependent arrays
-SIZE=( 50000 )
-TIME=( 165 )
+# input-size dependent arrays #50000 #500
+SIZE=( 10000 50000 ) 
+TIME=( 100 500 ) 
 
 if $more ; then
     i=1
@@ -34,45 +34,52 @@ if $more ; then
 fi
 
 # input-size independent arrays
-FILTER=( ?a_foo_0 )
-NODES=( 2 )
-TPAR=( 2 )
+TPAR=( 1 )
 FPAR=( 1 )
 SPAR=( 2 )
-SHARE=( true )
+SHARE=( nothing all_emit_each all_emit_once )
+FILTER=( "?a_foo_0^?a_foo_1" "?a_foo_?b^?a_bar_?b" )
+DEFAULT_TERMINALS=1 #in case FILTER[i] is ""
 
 for (( i=0; i<${#SIZE[@]}; i++ ));do
- for nodes in ${NODES[@]};do
+ for filter in ${FILTER[@]};do
   for tpar in ${TPAR[@]};do
    for fpar in ${FPAR[@]};do
     for spar in ${SPAR[@]};do
-     for filter in ${FILTER[@]};do
-      for share in ${SHARE[@]};do
+     for share in ${SHARE[@]};do
 
-                        # if [ $tpar -eq 1 ] && [ $fpar -eq 2 ]; then continue; fi
+      #if [ $fpar -eq 1 ] && [ $tpar -eq 2 ]; then continue; fi
 
-                            date
-            
-                            # this iteration is a single measurement
-                            # each measurement runs reteonstorm a few times and produces a single summary file
-                            # each "different" measurement should be given a different id (-mid)
-                            # giving the same -mid would overwrite the previous logs and log-summary
+#why not just check for the word "none" since I'm not using "" anymore?
+filters=(${filter//^/ })
+numFilters=${#filters[@]}
+if [ $numFilters -eq 0 ]; then
+ numTerms=$DEFAULT_TERMINALS
+else
+ numTerms=$numFilters
+fi
+
+       date
+           
+        # this iteration is a single measurement
+        # each measurement runs reteonstorm a few times and produces a single summary file
+        # each "different" measurement should be given a different id (-mid)
+        # giving the same -mid would overwrite the previous logs and log-summary
         
-                            ${ROS_SCRIPTS}/measure \
-                                -n $nodes \
-                                -ns $share \
-                                -F $filter \
-                                -sp $spar \
-                                -fp $fpar \
-                                -tp $tpar \
-                                -i ${SIZE[$i]} \
-                                -ttl ${TIME[$i]} \
-                                -mid "nodes${nodes}_share${share}_filter${filter}_spar${spar}_fpar${fpar}_tpar${tpar}_size${SIZE[$i]}"
-                        done
-                    done
-                done
-            done
-        done
+        ${ROS_SCRIPTS}/measure \
+         -ns $share \
+         -F $filter \
+         -n $numTerms \
+         -sp $spar \
+         -fp $fpar \
+         -tp $tpar \
+         -i ${SIZE[$i]} \
+         -ttl ${TIME[$i]} \
+         -mid "nodes${numTerms}_share${share}_filter${filter}_spar${spar}_fpar${fpar}_tpar${tpar}_size${SIZE[$i]}"
+     done
     done
+   done
+  done
+ done
 done
 echo "experiment done."

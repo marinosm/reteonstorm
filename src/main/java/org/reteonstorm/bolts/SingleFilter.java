@@ -9,18 +9,20 @@ import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import org.apache.commons.lang.StringUtils;
 
 /**
  * @author Marinos Mavrommatis
  */
-public class TripleFilter extends BaseBasicBolt {
+public class SingleFilter extends BaseBasicBolt {
 	private static final long serialVersionUID = -6343942346452143072L;
 
 	private final String delim;
-	private final char varIndicator;
-	private final String[] filters;
-
+	private final String varIndicator;
+	private final String[] filter;
 
 	@Override
 	public void prepare(@SuppressWarnings("rawtypes") Map stormConf, TopologyContext context) {}
@@ -30,39 +32,41 @@ public class TripleFilter extends BaseBasicBolt {
 	}
 
 	//FIXME: should probably be moved in the prepare method
-	public TripleFilter(String[] subjPredObj, String delim, char variableIndicator) {
-		this.delim = delim;
-		this.varIndicator = variableIndicator;
-
-		if (subjPredObj.length != 3)
+	public SingleFilter(String[] filter, String delim, String variableIndicator) {
+		if (filter.length != 3)
 			throw new IllegalArgumentException(
 					"subjPredObj must be a String array of size 3. Given array of length "
-							+subjPredObj.length);
-
-		this.filters = subjPredObj;
+							+filter.length);
+		this.delim = delim;
+		this.varIndicator = variableIndicator;
+		this.filter = filter;
 	}
 
 	public void execute(Tuple input, BasicOutputCollector collector) {
 		String line = input.getString(0);
-		String[] triple = line.split(delim);
+		String[] triple = StringUtils.split(line,delim);
 		if (triple.length != 3)
 			throw new RuntimeException("Line is not a triple: "+input);
 
-		boolean triplePassesFilters = true;
-		for (int i=0; i<3; i++){
-			if (filters[i].charAt(0)!=varIndicator && !triple[i].equals(filters[i])){
-				triplePassesFilters = false;
-				break;
+		//make sure that parts of the filter that are not variables match the respective parts in the input triple
+		//also make sure repeated variables receive the same value (ie ?a_foo_?a shouldn't accept A_foo_B)
+		Map<String, String> bindings = new HashMap<String, String>(3);
+		for (int i=0; i<3; i++)
+			if (filter[i].startsWith(varIndicator)){
+				if (bindings.containsKey(filter[i])){
+					if (!bindings.get(filter[i]).equals(triple[i])){
+						return;
+					}
+				}else{
+					bindings.put(filter[i], triple[i]);
+				}
+			}else{
+				if (!triple[i].equals(filter[i])){
+					return;
+				}
 			}
-		}
 
-		if (triplePassesFilters){
-			Map<String, String> bindings = new HashMap<String, String>(3);
-			for (int i=0; i<3; i++)
-				if (filters[i].charAt(0)==varIndicator)
-					bindings.put(filters[i], triple[i]);
-			collector.emit(new Values(bindings));
-		}
+		collector.emit(new Values(bindings));
 	}
 
 	public void cleanup() {}

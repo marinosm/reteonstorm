@@ -1,0 +1,5 @@
+for f in `ls nodes*`; do 
+	if [[ `grep "fail" -i -m 1 < $f` ]];then 
+		echo $f
+	fi
+done

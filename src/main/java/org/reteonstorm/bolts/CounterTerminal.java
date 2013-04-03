@@ -13,8 +13,8 @@ import backtype.storm.tuple.Tuple;
 public class CounterTerminal extends BaseBasicBolt {
 	private static final long serialVersionUID = 6037623011308690311L;
 
-	private int id;
-	private long count;
+	protected int id;
+	protected long count;
 
 	public CounterTerminal(int id) {
 		this.id = id;
@@ -28,7 +28,7 @@ public class CounterTerminal extends BaseBasicBolt {
 	@SuppressWarnings("unchecked")
 	@Override
 	public void execute(Tuple input, BasicOutputCollector collector) {
-		System.out.println("Received="+(Map<String,String>)input.getValue(0)+"CounterTerminal"+id); //TODO logger.debug
+		System.out.println("Received="+(Map<String,String>)input.getValue(0)+" CounterTerminal"+id);
 		count++;
 	}
 

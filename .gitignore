@@ -6,6 +6,10 @@
 target/
 logs/
 resources/
+archive-logs/
+
+scripts/foo*
+scripts/bar*
 
 *.jar
 *.war
