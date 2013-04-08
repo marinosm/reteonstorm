@@ -56,8 +56,9 @@ public class UniversalFilterEmitOnce extends BaseBasicBolt {
 
 		//separate map for each filter because filters might be coming from different queries => variable name clashes
 		List<Map<String,String>> allBindings = new ArrayList<Map<String,String>>(filters.length);
+		boolean empty=true;
 		filter: for (int i=0; i<filters.length; i++){
-			allBindings.add(new HashMap<String,String>());
+			allBindings.add(new HashMap<String,String>()); //to make sure the list expands even if "bindings" is not added
 			Map<String, String> bindings = new HashMap<String, String>(3);
 			for (int j=0; j<3; j++)
 				if (filters[i][j].startsWith(varIndicator)){
@@ -74,8 +75,10 @@ public class UniversalFilterEmitOnce extends BaseBasicBolt {
 					}
 				}
 			allBindings.set(i,bindings);
+			empty=false;
 		}
-		collector.emit(new Values(allBindings));
+		if (!empty)
+			collector.emit(new Values(allBindings));
 	}
 
 	public void cleanup() {}

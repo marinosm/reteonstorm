@@ -21,8 +21,8 @@ fi
 more=false
 
 # input-size dependent arrays #50000 #500
-SIZE=( 10000 50000 ) 
-TIME=( 100 500 ) 
+SIZE=( 10000 ) 
+TIME=( 70 ) 
 
 if $more ; then
     i=1
@@ -37,8 +37,8 @@ fi
 TPAR=( 1 )
 FPAR=( 1 )
 SPAR=( 2 )
-SHARE=( nothing all_emit_each all_emit_once )
-FILTER=( "?a_foo_0^?a_foo_1" "?a_foo_?b^?a_bar_?b" )
+SHARE=( all_emit_once nothing )
+FILTER=( "?a_?b_?c^?a_foo_?c" )
 DEFAULT_TERMINALS=1 #in case FILTER[i] is ""
 
 for (( i=0; i<${#SIZE[@]}; i++ ));do
@@ -48,7 +48,7 @@ for (( i=0; i<${#SIZE[@]}; i++ ));do
     for spar in ${SPAR[@]};do
      for share in ${SHARE[@]};do
 
-      #if [ $fpar -eq 1 ] && [ $tpar -eq 2 ]; then continue; fi
+#if [ $fpar -eq 1 ] && [ $tpar -eq 2 ]; then continue; fi
 
 #why not just check for the word "none" since I'm not using "" anymore?
 filters=(${filter//^/ })

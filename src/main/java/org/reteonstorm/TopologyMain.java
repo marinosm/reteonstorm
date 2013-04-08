@@ -69,11 +69,11 @@ public class TopologyMain {
 	/*
 	 * input size (number of tuples) = SUBJECTS.length x PREDICATES.length x NUM_OF_OBJECTS
 	 */
-	private static long NUM_OF_OBJECTS = 50000;//50000;
+	private static long NUM_OF_OBJECTS = 10000;//50000;
 	/*
 	 * how long to wait after submitting the topology, before killing it (in seconds)
 	 */
-	private static int TIME_TO_LIVE = 500;//180;
+	private static int TIME_TO_LIVE = 200;//180;
 	/*
 	 * Whether to avoid creating identical filter Bolts (Named after "node sharing" in the Rete algorithm)
 	 * If this is true, only a single filter Bolt is created that emits to all Terminal Bolts
@@ -83,13 +83,13 @@ public class TopologyMain {
 	//	NOTHING("nothing"),SIMILAR("similar"),ALL_EMIT_EACH("all_emit_each"),ALL_EMIT_ONCE("all_emit_once");
 	//	private String which;
 	//	SHARE(String which){this.which=which;}
-	private static SHARE sharing = SHARE.NOTHING;
+	private static SHARE sharing = SHARE.SIMILAR;
 	/*
 	 * Subject-Predicate-Object filter. 
 	 * Parts with a '?' are variables. Others are filters.
 	 * Example ?a_foo_?b => accept triples with any subject, any object but only if they have 'foo' as the predicate
 	 */
-	private static String[] FILTERS = new String[]{"?a_foo_?b", "?a_bar_?b"};
+	private static String[] FILTERS = new String[]{"?0_?0_?0", "?0_?0_?0"};
 	/*
 	 * Specifies how many Terminal Bolts should be created.
 	 * Also in case SHARING is false, this also specifies how many identical Filter nodes should be created
@@ -227,18 +227,19 @@ public class TopologyMain {
 		}else{
 			System.out.println("Setting "+filtersToAdd.size()+" Filter Bolts");
 
-			for (String[] filter : filtersToAdd){
+			for (int i=0; i<filtersToAdd.size(); i++){
+				String[] filter = filtersToAdd.get(i);
 
 				boolean isPassive=true;
 				for (String part: filter)
-					if (!part.equals("?0"))
+					if (!part.startsWith("?0")) //starts with because when sharing it becomes ?0?0_?0?0_?0?0
 						isPassive=false;
 
 				IBasicBolt filterBolt = isPassive? 
 						new PassThroughBolt() : 
 							new SingleFilter(filter, DELIM, VAR_INDICATOR);
 
-						builder.setBolt(FILTER_PREFIX+filter.toString(), filterBolt, FILTER_PARALLELISM)
+						builder.setBolt(FILTER_PREFIX+i, filterBolt, FILTER_PARALLELISM)
 
 						.shuffleGrouping(SPOUT);
 			}
@@ -284,9 +285,9 @@ public class TopologyMain {
 				if (terminalSubscriptions[i]==-1)
 					declarer.shuffleGrouping(SPOUT);
 				else
-					declarer.shuffleGrouping(FILTER_PREFIX+filtersToAdd.get(terminalSubscriptions[i]).toString());
+					declarer.shuffleGrouping(FILTER_PREFIX+terminalSubscriptions[i]);
 
-				//Determine expected result size FIXME: will give wrong value for "?a_foo_?a"
+				//Determine expected result size FIXME: will give wrong value for "?a_foo_?a". btw if fixed it will give wrong value for ?0_?0_?0
 				final long[] sizes = new long[]{SUBJECTS.length, PREDICATES.length, NUM_OF_OBJECTS};
 				long expectedResultSize = 1;
 				for (int j=0; j<FILTER_LENGTH; j++)
