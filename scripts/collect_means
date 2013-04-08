@@ -1,6 +1,6 @@
 #!/bin/bash
 
-for summarypath in `find $1 -name "summary*"`
+for summarypath in `ls $1/summary*` #`find $1 -name "summary*"` or just ls $1/*summary*
 do
 	mean=`${ROS_SCRIPTS}/collect < $summarypath | ${ROS_SCRIPTS}/mean.py`
 
