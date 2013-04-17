@@ -10,6 +10,7 @@ import backtype.storm.tuple.Values;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -52,7 +53,7 @@ public class UniversalFilterEmitEach extends BaseBasicBolt {
 			throw new RuntimeException("Line is not a triple: "+input);
 
 		filter: for (int i=0; i<filters.length; i++){
-			Map<String, String> bindings = new HashMap<String, String>(3);
+			Map<String, String> bindings = new TreeMap<String, String>();
 			for (int j=0; j<3; j++)
 				if (filters[i][j].startsWith(varIndicator)){
 					if (bindings.containsKey(filters[i][j])){

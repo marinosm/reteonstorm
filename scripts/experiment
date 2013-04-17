@@ -21,8 +21,8 @@ fi
 more=false
 
 # input-size dependent arrays #50000 #500
-SIZE=( 10000 ) 
-TIME=( 70 ) 
+SIZE=( 600 ) 
+TIME=( 150 ) 
 
 if $more ; then
     i=1
@@ -35,18 +35,22 @@ fi
 
 # input-size independent arrays
 TPAR=( 1 )
+JPAR=( 1 )
 FPAR=( 1 )
 SPAR=( 2 )
-SHARE=( all_emit_once nothing )
-FILTER=( "?a_?b_?c^?a_foo_?c" )
+NODE_SHARE=( all_multiple_streams )
+JOIN_SHARE=( true false )
+FILTER=( "?a_foo_?b^A_bar_?b^A_?c_?b^B_?d_?b^?e_?d_1^?e_?d_2^?e_?d_3" )
 DEFAULT_TERMINALS=1 #in case FILTER[i] is ""
 
 for (( i=0; i<${#SIZE[@]}; i++ ));do
  for filter in ${FILTER[@]};do
   for tpar in ${TPAR[@]};do
    for fpar in ${FPAR[@]};do
+   for jpar in ${JPAR[@]};do
     for spar in ${SPAR[@]};do
-     for share in ${SHARE[@]};do
+     for nodeShare in ${NODE_SHARE[@]};do
+     for joinShare in ${JOIN_SHARE[@]};do
 
 #if [ $fpar -eq 1 ] && [ $tpar -eq 2 ]; then continue; fi
 
@@ -67,15 +71,19 @@ fi
         # giving the same -mid would overwrite the previous logs and log-summary
         
         ${ROS_SCRIPTS}/measure \
-         -ns $share \
+         -ns $nodeShare \
+         -js $joinShare \
          -F $filter \
          -n $numTerms \
          -sp $spar \
          -fp $fpar \
+         -jp $fpar \
          -tp $tpar \
          -i ${SIZE[$i]} \
          -ttl ${TIME[$i]} \
-         -mid "nodes${numTerms}_share${share}_filter${filter}_spar${spar}_fpar${fpar}_tpar${tpar}_size${SIZE[$i]}"
+         -mid "nodes${numTerms}_nodeShare${nodeShare}_joinShare${joinShare}_filter${filter}_spar${spar}_fpar${fpar}_jpar${jpar}_tpar${tpar}_size${SIZE[$i]}"
+     done
+     done
      done
     done
    done

@@ -47,7 +47,7 @@ elif [ "$2" == "-c" ] ; then
 		echo "results are NOT ok!"
 	fi
 else
-	echo "Didn't check results. See scripts/summary"
+	cat $1 | grep -e '^CounterTerminal[0-9]*: partialCount' | sort | ${ROS_SCRIPTS}/addup_partial.pl
 fi
 
 ###################

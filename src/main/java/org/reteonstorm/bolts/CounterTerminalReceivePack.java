@@ -1,6 +1,5 @@
 package org.reteonstorm.bolts;
 
-import java.util.List;
 import java.util.Map;
 
 import backtype.storm.topology.BasicOutputCollector;
@@ -19,8 +18,9 @@ public class CounterTerminalReceivePack extends CounterTerminal {
 	
 	@Override
 	public void execute(Tuple input, BasicOutputCollector collector) {
-		List<Map<String, String>> matched = (List<Map<String, String>>)input.getValue(0);
-		if (matched.get(id).size() > 0)
+		@SuppressWarnings("unchecked")
+		Map<Integer,Map<String, String>> matched = (Map<Integer,Map<String, String>>)input.getValue(0);
+		if (matched.containsKey(id) && matched.get(id).size()>0)
 			count++;
 	}
 

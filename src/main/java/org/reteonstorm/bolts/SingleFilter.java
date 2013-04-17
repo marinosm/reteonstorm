@@ -11,6 +11,7 @@ import backtype.storm.tuple.Values;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -50,7 +51,7 @@ public class SingleFilter extends BaseBasicBolt {
 
 		//make sure that parts of the filter that are not variables match the respective parts in the input triple
 		//also make sure repeated variables receive the same value (ie ?a_foo_?a shouldn't accept A_foo_B)
-		Map<String, String> bindings = new HashMap<String, String>(3);
+		Map<String, String> bindings = new TreeMap<String, String>();
 		for (int i=0; i<3; i++)
 			if (filter[i].startsWith(varIndicator)){
 				if (bindings.containsKey(filter[i])){

@@ -10,6 +10,7 @@ archive-logs/
 
 scripts/foo*
 scripts/bar*
+scripts/FOR*
 
 *.jar
 *.war

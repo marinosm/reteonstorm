@@ -3,7 +3,7 @@
 JVM_ARGS=-Xmx2G # conflict with MAVEN_OPTS (Xmx and maxPermSize) in bash_profile
 MAVEN_JAR=${RETEONSTORM}/target/reteonstorm-1.0-SNAPSHOT-jar-with-dependencies.jar
 SUBJECTSxPREDICATES=6 # Subjects and Objects are hard-coded in TopologyMain
-ITERATION_START=2 # iteration becomes part of the log filename so start/end with different numbers
+ITERATION_START=1 # iteration becomes part of the log filename so start/end with different numbers
 ITERATION_END=4 # to avoid overwriting identical measurements and make possible to take the average later
 #TRIPLES_FILE=${RETEONSTORM}/resources/abcd
 #EXPECTED_OUTPUT_LINES=4 # 1 line per triple in the output
@@ -13,6 +13,8 @@ while (( "$#" )) ; do
 		MEASUREMENT_ID=$2
 	elif [ $1 == "-ns" ]; then
 		NODE_SHARING=$2
+	elif [ $1 == "-js" ]; then
+		JOIN_SHARING=$2
 	elif [ $1 == "-F" ]; then
 		FILTER=$2
 	elif [ $1 == "-n" ]; then
@@ -21,6 +23,8 @@ while (( "$#" )) ; do
 		SPOUT_PARALLELISM=$2
 	elif [ $1 == "-fp" ]; then
 		FILTER_PARALLELISM=$2
+	elif [ $1 == "-jp" ]; then
+		JOIN_PARALLELISM=$2
 	elif [ $1 == "-tp" ]; then
 		TERMINAL_PARALLELISM=$2
 	elif [ $1 == "-i" ]; then
@@ -54,17 +58,19 @@ for i in `seq $ITERATION_START $ITERATION_END` ; do
 
 	java $JVM_ARGS -cp ${MAVEN_JAR} org.reteonstorm.TopologyMain \
 		-ns $NODE_SHARING \
+		-js $JOIN_SHARING \
 		-F $FILTER \
 		-n $NUM_OF_TERMINALS \
 		-sp $SPOUT_PARALLELISM \
 		-fp $FILTER_PARALLELISM \
+		-jp $JOIN_PARALLELISM \
 		-tp $TERMINAL_PARALLELISM \
 		-i $NUM_OF_OBJECTS \
 		-ttl $TIME_TO_LIVE 			> $LOG_FILE
 			# :${STORM_LIBS}
 	
 	cat <<-EOF 					>> $SUMMARY_FILE
-		`${ROS_SCRIPTS}/summary $LOG_FILE -c $NUM_OF_TERMINALS`
+		`${ROS_SCRIPTS}/summary $LOG_FILE` # -c $NUM_OF_TERMINALS
 		
 		EOF
 done

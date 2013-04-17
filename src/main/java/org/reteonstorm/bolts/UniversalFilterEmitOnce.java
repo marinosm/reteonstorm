@@ -8,11 +8,9 @@ import backtype.storm.tuple.Fields;
 import backtype.storm.tuple.Tuple;
 import backtype.storm.tuple.Values;
 
-import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -55,11 +53,9 @@ public class UniversalFilterEmitOnce extends BaseBasicBolt {
 			throw new RuntimeException("Line is not a triple: "+input);
 
 		//separate map for each filter because filters might be coming from different queries => variable name clashes
-		List<Map<String,String>> allBindings = new ArrayList<Map<String,String>>(filters.length);
-		boolean empty=true;
+		Map<Integer,Map<String,String>> allBindings = new HashMap<Integer,Map<String,String>>(filters.length);
 		filter: for (int i=0; i<filters.length; i++){
-			allBindings.add(new HashMap<String,String>()); //to make sure the list expands even if "bindings" is not added
-			Map<String, String> bindings = new HashMap<String, String>(3);
+			Map<String, String> bindings = new TreeMap<String, String>();
 			for (int j=0; j<3; j++)
 				if (filters[i][j].startsWith(varIndicator)){
 					if (bindings.containsKey(filters[i][j])){
@@ -74,10 +70,9 @@ public class UniversalFilterEmitOnce extends BaseBasicBolt {
 						continue filter;
 					}
 				}
-			allBindings.set(i,bindings);
-			empty=false;
+			allBindings.put(i,bindings);
 		}
-		if (!empty)
+		if (!allBindings.isEmpty())
 			collector.emit(new Values(allBindings));
 	}
 
