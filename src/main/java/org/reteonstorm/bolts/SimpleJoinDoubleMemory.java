@@ -4,14 +4,12 @@
 package org.reteonstorm.bolts;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 
 import org.apache.tools.ant.UnsupportedAttributeException;
+import org.reteonstorm.Toolbox;
 import org.reteonstorm.TopologyMain;
 
 import backtype.storm.topology.BasicOutputCollector;
@@ -25,6 +23,7 @@ import backtype.storm.tuple.Values;
  * @author Marinos Mavrommatis
  */
 public class SimpleJoinDoubleMemory extends BaseBasicBolt {
+	private static final long serialVersionUID = 1181068441965628220L;
 
 	private static final int MAX_ENTRIES_EACH = 10000;
 
@@ -77,29 +76,14 @@ public class SimpleJoinDoubleMemory extends BaseBasicBolt {
 						continue memory;
 					}
 				}
-				Map<String,String> combinedBindings = mapUnion(currentBindings, receivedBindings);
-				collector.emit("default", new Values(combinedBindings, extractFieldsGroupingString(combinedBindings, fieldsGroupingVars)));
+				Map<String,String> combinedBindings = Toolbox.mapUnion(currentBindings, receivedBindings);
+				collector.emit(TopologyMain.DEFAULT_STREAM_NAME, new Values(combinedBindings, Toolbox.extractFieldsGroupingString(combinedBindings, fieldsGroupingVars)));
 			}
 	}
 
-	public static Map<String,String> mapUnion(Map<String,String> left, Map<String,String> right){
-		Map<String,String> toEmit = new HashMap<String, String>();
-		toEmit.putAll(left);
-		toEmit.putAll(right);
-		return toEmit;
-	}
-	
-	public static String extractFieldsGroupingString(Map<String,String> combinedBindings, List<String> fieldsGroupingVars){
-		Set<String> vars = new TreeSet<String>(combinedBindings.keySet());
-		vars.retainAll(fieldsGroupingVars);
-		Collection<String> values = new ArrayList<String>(0);
-		for (String var : vars)
-			values.add(combinedBindings.get(var));
-		return UniversalFilterMultipleStreams.myToString(values);
-	}
 	@Override
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
-		declarer.declareStream("default", new Fields("bindings", TopologyMain.FIELDS_GROUPING_VAR));
+		declarer.declareStream(TopologyMain.DEFAULT_STREAM_NAME, new Fields("bindings", TopologyMain.FIELDS_GROUPING_VAR));
 	}
 
 }

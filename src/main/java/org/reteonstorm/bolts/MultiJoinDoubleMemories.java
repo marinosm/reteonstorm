@@ -10,8 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.TreeSet;
 
+import org.reteonstorm.Toolbox;
 import org.reteonstorm.TopologyMain;
 
 import backtype.storm.generated.GlobalStreamId;
@@ -26,6 +26,7 @@ import backtype.storm.tuple.Values;
  * @author Marinos Mavrommatis
  */
 public class MultiJoinDoubleMemories extends BaseBasicBolt {
+	private static final long serialVersionUID = 7493203068748772795L;
 
 	private static final String INTERMEDIATE_JOIN_PREFIX = "intermediateJoin";
 
@@ -62,13 +63,6 @@ public class MultiJoinDoubleMemories extends BaseBasicBolt {
 		}
 	}
 
-	public static Set<String> union(Set<String> left, Set<String> right) {
-		Set<String> union = new TreeSet<String>();
-		union.addAll(left);
-		union.addAll(right);
-		return union;
-	}
-
 	@SuppressWarnings("unchecked")
 	@Override
 	public void execute(Tuple input, BasicOutputCollector collector) {
@@ -81,7 +75,7 @@ public class MultiJoinDoubleMemories extends BaseBasicBolt {
 
 		//if this is the last memory, then it's a dummy memory, just emit
 		if (memoryToPut.destination == null){
-			collector.emit("default", new Values(receivedBindings, SimpleJoinDoubleMemory.extractFieldsGroupingString(receivedBindings, fieldsGroupingVars)));
+			collector.emit(TopologyMain.DEFAULT_STREAM_NAME, new Values(receivedBindings, Toolbox.extractFieldsGroupingString(receivedBindings, fieldsGroupingVars)));
 			return;
 		}
 
@@ -92,7 +86,7 @@ public class MultiJoinDoubleMemories extends BaseBasicBolt {
 		}
 		memoryToPut.add(receivedBindings);
 
-		Set<String> commonVars = intersection(memoryToCompare.variables, memoryToPut.variables);
+		Set<String> commonVars = Toolbox.setIntersection(memoryToCompare.variables, memoryToPut.variables);
 		//if no common variables then the Cartesian product will be constructed
 		bindings : for (Map<String,String> currentBindings : memoryToCompare){
 			for(String varName : commonVars){
@@ -108,18 +102,13 @@ public class MultiJoinDoubleMemories extends BaseBasicBolt {
 		}
 	}
 	
-	public static Set<String> intersection(Set<String> left, Set<String> right) {
-		Set<String> clone = new TreeSet<String>(left);
-		clone.retainAll(right);
-		return clone;
-	}
-
 	@Override
 	public void declareOutputFields(OutputFieldsDeclarer declarer) {
-		declarer.declareStream("default", new Fields("bindings", TopologyMain.FIELDS_GROUPING_VAR));
+		declarer.declareStream(TopologyMain.DEFAULT_STREAM_NAME, new Fields("bindings", TopologyMain.FIELDS_GROUPING_VAR));
 	}
 
 	private class Memory extends ArrayList<Map<String,String>>{
+		private static final long serialVersionUID = -662062133825827163L;
 
 		final String name;
 		final Set<String> variables;
@@ -142,14 +131,8 @@ public class MultiJoinDoubleMemories extends BaseBasicBolt {
 			this.rightSource = rightSource;
 			leftSource.destination = this;
 			rightSource.destination = this;
-			this.variables = union(leftSource.variables, rightSource.variables);
+			this.variables = Toolbox.setUnion(leftSource.variables, rightSource.variables);
 		}
-
-		//		Memory getOtherMemory(){
-		//			return this == destination.leftSource ? destination.rightSource : 
-		//				this == destination.rightSource ? destination.leftSource : 
-		//					null;
-		//		}
 
 		Memory getOtherSource(Memory givenSource){
 			return givenSource == leftSource ? rightSource : 
