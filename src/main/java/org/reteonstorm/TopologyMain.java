@@ -1,12 +1,8 @@
 package org.reteonstorm;
 
 import java.util.Set;
-import java.util.TreeMap;
-
 import org.apache.commons.lang.StringUtils;
 import org.apache.thrift7.TException;
-import org.reteonstorm.bolts.CounterTerminal;
-
 import backtype.storm.Config;
 import backtype.storm.LocalCluster;
 import backtype.storm.generated.GlobalStreamId;
@@ -72,7 +68,7 @@ public class TopologyMain {
 	/*
 	 * how long to wait after submitting the topology, before killing it (in seconds)
 	 */
-	protected static int TIME_TO_LIVE = 50;//15;//180;
+	protected static int TIME_TO_LIVE = 500;//15;//180;
 	/*
 	 * Whether to avoid creating identical filter Bolts (Named after "node sharing" in the Rete algorithm)
 	 * If this is true, only a single filter Bolt is created that emits to all Terminal Bolts
@@ -172,11 +168,15 @@ public class TopologyMain {
 			Set<Set<Integer>> groupsOfFilters = Algorithms.groupFilters(FILTER_ARRAYS);
 			GlobalStreamId[] streams = BoltAdder.addSingleFilter(builder, FILTER_ARRAYS, groupsOfFilters);
 			GlobalStreamId lastStream = BoltAdder.addJoins(builder, FILTER_ARRAYS, streams, joinSharing, groupsOfFilters);
-			BoltAdder.addSingleCounterTerminal(builder, FILTER_ARRAYS, lastStream, NUM_OF_OBJECTS);
+			BoltAdder.addSingleCounterTerminal(builder, FILTER_ARRAYS, lastStream);
+			System.out.println("ExpectedResultSize0="+Algorithms.expectedResultSize(FILTER_ARRAYS, NUM_OF_OBJECTS));
 		}else{
 			GlobalStreamId[] streams = BoltAdder.addFilters(builder, FILTER_ARRAYS, filterSharing.equals(SHARE.SIMILAR));
 			//TODO adding joins without sharing should work.
-			BoltAdder.addCounterTerminals(builder, FILTER_ARRAYS, streams, NUM_OF_OBJECTS);
+			BoltAdder.addCounterTerminals(builder, FILTER_ARRAYS, streams);
+			long[] expectedResultSizes = Algorithms.separateExpectedResultSizes(FILTER_ARRAYS, NUM_OF_OBJECTS);
+			for (int i=0; i<expectedResultSizes.length; i++)
+				System.out.println("ExpectedResultSize"+i+"="+expectedResultSizes[i]);
 		}
 
 		//Configure

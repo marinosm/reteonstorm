@@ -22,7 +22,7 @@ public class Toolbox {
 		return filters;
 	}
 
-	public static TreeSet<String> intersection(Set<String[]> group) {
+	public static TreeSet<String> commonVars(Set<String[]> group) {
 		TreeSet<String> intersection = new TreeSet<String>();
 		Iterator<String[]> iter = group.iterator();
 		intersection.addAll(Toolbox.extractVars(iter.next())); //assumes there exists at least one group filter in "group"
@@ -72,15 +72,10 @@ public class Toolbox {
 		return -1;
 	}
 
-	public static TreeSet<String> intersection(String[] left, String[] right){ //TODO just call extractVars in here to avoid doing all the time
+	public static TreeSet<String> commonVars(String[] left, String[] right){
 		TreeSet<String> intersection = new TreeSet<String>();
-		for (String varName : left){ //TODO replace with more readable "intersection" library method
-			for (String prevFilterVarName : right){
-				if (varName.equals(prevFilterVarName)){
-					intersection.add(varName);
-				}
-			}
-		}
+		intersection.addAll(extractVars(left));
+		intersection.retainAll(extractVars(right));
 		return intersection;
 	}
 
@@ -118,6 +113,13 @@ public class Toolbox {
 		union.addAll(left);
 		union.addAll(right);
 		return union;
+	}
+
+	public static List<String> toList(String[] strings) {
+		List<String> list = new ArrayList<String>(strings.length);
+		for (String string : strings)
+			list.add(string);
+		return list;
 	}
 
 }

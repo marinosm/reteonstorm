@@ -31,6 +31,7 @@ public class BoltAdder{
 
 		if (nodeSharing)
 
+			//given the original Filter arrays, fill up filersToAdd and streams
 			Algorithms.shareSimilarFilters(filterArrays, filtersToAdd, streams);
 
 		else{
@@ -61,7 +62,7 @@ public class BoltAdder{
 			Set<String[]> filterGroup = Toolbox.extractFilterGroup(filterArrays,group);
 			for(int filter : group){
 				streams[filter] = new GlobalStreamId(TopologyMain.FILTER_PREFIX, TopologyMain.FILTER_STREAM_PREFIX+filter);
-				fieldsGroupingVarsPerStream.put(streams[filter].toString(), new ArrayList<String>(Toolbox.intersection(filterGroup)));
+				fieldsGroupingVarsPerStream.put(streams[filter].toString(), new ArrayList<String>(Toolbox.commonVars(filterGroup)));
 			}
 			//TODO: do shuffle grouping when group-size is 1 ?
 		}
@@ -194,46 +195,21 @@ public class BoltAdder{
 		return last;
 	}
 
-	public static void addCounterTerminals(TopologyBuilder builder, String[][] filterArrays, GlobalStreamId[] streams, long numOfObjects){
+	public static void addCounterTerminals(TopologyBuilder builder, String[][] filterArrays, GlobalStreamId[] streams){
+
 		for (int i=0; i<streams.length; i++){
-
 			IBasicBolt terminalBolt = new SilentCounterTerminal(i);
-
 			BoltDeclarer declarer=builder.setBolt(TopologyMain.TERMINAL_PREFIX+i, terminalBolt, TopologyMain.TERMINAL_PARALLELISM);
-
 			declarer.shuffleGrouping(streams[i].get_componentId(), streams[i].get_streamId());
-
-			//Determine expected result size FIXME: will give wrong value for "?a_foo_?a". Also I don't think it handles the case when there is a filter without a variable that actually limits the result.
-			final long[] sizes = new long[]{TopologyMain.SUBJECTS.length, TopologyMain.PREDICATES.length, numOfObjects};
-			long expectedResultSize = 1;
-			for (int j=0; j<TopologyMain.FILTER_LENGTH; j++)
-				if (filterArrays[i][j].startsWith(TopologyMain.VAR_INDICATOR))
-					expectedResultSize*=sizes[j];
-			System.out.println("ExpectedResultSize"+i+'='+expectedResultSize);
 		}
 	}
-	public static void addSingleCounterTerminal(TopologyBuilder builder, String[][] filterArrays, GlobalStreamId stream, long numOfObjects) {
+	
+	public static void addSingleCounterTerminal(TopologyBuilder builder, String[][] filterArrays, GlobalStreamId stream) {
+		
 		IBasicBolt terminalBolt = new SilentCounterTerminal(0);
-		
 		BoltDeclarer declarer=builder.setBolt(TopologyMain.TERMINAL_PREFIX+0, terminalBolt, TopologyMain.TERMINAL_PARALLELISM);
-		
 		declarer.shuffleGrouping(stream.get_componentId(), stream.get_streamId());
-		
-		//Determine expected result size FIXME: will give wrong value for "?a_foo_?a". Also I don't think it handles the case when there is a filter without a variable that actually limits the result.
-		final long[] sizes = new long[]{TopologyMain.SUBJECTS.length, TopologyMain.PREDICATES.length, numOfObjects};
-		long expectedResultSize = 1;
-		Set<String> alreadyConsidered = new HashSet<String>();
-		expectedResultSize = 0;
-		for (int j=0; j<filterArrays.length; j++){
-			long temp = 1;
-			for (int k=0; k<TopologyMain.FILTER_LENGTH; k++)
-				if (filterArrays[j][k].startsWith(TopologyMain.VAR_INDICATOR) && !alreadyConsidered.contains(filterArrays[j][k])){
-					temp*=sizes[k];
-					alreadyConsidered.add(filterArrays[j][k]);
-				}
-			expectedResultSize += temp > 1 ? temp : 0;
-		}
-		System.out.println("ExpectedResultSize0="+expectedResultSize);
 	}
+
 }
 

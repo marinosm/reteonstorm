@@ -41,7 +41,6 @@ public class UniversalFilterMultipleStreams extends BaseBasicBolt {
 			declarer.declareStream(TopologyMain.FILTER_STREAM_PREFIX+i, new Fields("bindings", TopologyMain.FIELDS_GROUPING_VAR));
 	}
 
-	//FIXME: should probably be moved in the prepare method
 	public UniversalFilterMultipleStreams(String[][] filters, Map<String,List<String>> fieldsGroupingVarsPerStream) {
 
 		for (String[] filter : filters)
@@ -83,9 +82,7 @@ public class UniversalFilterMultipleStreams extends BaseBasicBolt {
 		for (Entry<Integer, Map<String,String>> numberedBindings : allBindings.entrySet()){
 			Set<String> vars = new TreeSet<String>(numberedBindings.getValue().keySet());
 			String streamId = TopologyMain.FILTER_STREAM_PREFIX+numberedBindings.getKey();
-			vars.retainAll(fieldsGroupingVarsPerStream.get(
-					new GlobalStreamId(TopologyMain.FILTER_PREFIX, streamId).toString()
-					));
+			vars.retainAll(fieldsGroupingVarsPerStream.get(new GlobalStreamId(TopologyMain.FILTER_PREFIX, streamId).toString()));
 			Collection<String> values = new ArrayList<String>();
 			for (String var : vars)
 				values.add(numberedBindings.getValue().get(var));

@@ -1,24 +1,16 @@
 package org.reteonstorm;
 
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.TreeSet;
 
-import org.reteonstorm.bolts.CounterTerminal;
-import org.reteonstorm.bolts.MultiJoinDoubleMemories;
-import org.reteonstorm.bolts.SimpleJoinDoubleMemory;
-
 import backtype.storm.generated.GlobalStreamId;
-import backtype.storm.topology.BoltDeclarer;
-import backtype.storm.topology.IBasicBolt;
-import backtype.storm.topology.TopologyBuilder;
-import backtype.storm.tuple.Fields;
 
 
 public class Algorithms {
@@ -40,13 +32,13 @@ public class Algorithms {
 				Iterator<Integer> groupIter = group.iterator();
 
 				int firstGroupMember = groupIter.next();
-				TreeSet<String> commonVars = Toolbox.intersection(filterArrays[firstGroupMember], filterArrays[i]);
+				TreeSet<String> commonVars = Toolbox.commonVars(filterArrays[firstGroupMember], filterArrays[i]);
 				if (commonVars.isEmpty())
 					continue groups;
 
 				while(groupIter.hasNext()){
 					int currentGroupMember = groupIter.next();
-					TreeSet<String> currentCommonVars = Toolbox.intersection(filterArrays[currentGroupMember], filterArrays[i]);
+					TreeSet<String> currentCommonVars = Toolbox.commonVars(filterArrays[currentGroupMember], filterArrays[i]);
 					if (!currentCommonVars.equals(commonVars))
 						continue groups;
 				}
@@ -115,7 +107,7 @@ public class Algorithms {
 	//	//out of scope: could add dangling Cartesian filter in one of the groups. How about Cartesian between two large groups (or other order issues)
 
 	public static void shareSimilarFilters(String[][] filterArrays, List<String[]> filtersToAdd, GlobalStreamId[] streams) {
-		/*  Filters that produce the same output are combined into a single filter,
+		/*  Filters that accept and reject the same triples are combined into a single filter,
 		 *  even if they have different variable names */
 
 		List<String[]> correspondingVars = new ArrayList<String[]>(filterArrays.length);
@@ -128,8 +120,12 @@ public class Algorithms {
 			String[] vars = new String[filter.length];
 			for (int j=0; j<TopologyMain.FILTER_LENGTH; j++)
 				if (filter[j].startsWith(TopologyMain.VAR_INDICATOR)){
+					int varnameExtention = 0;
+					for (int k=0; k<vars.length; k++)
+						if (vars[k].equals(filter[j]))
+							varnameExtention=k;
 					vars[j]=filter[j];
-					varIndependentFilter[j]=TopologyMain.DEFAULT_VAR;
+					varIndependentFilter[j]=TopologyMain.VAR_INDICATOR+varnameExtention;
 				}
 
 			//collect any variables found in this filter
@@ -152,4 +148,64 @@ public class Algorithms {
 					filtersToAdd.get(i)[j]=correspondingVars.get(i)[j];
 	}
 
+	public static long expectedResultSize(String[][] filterArrays, long numOfObjects){
+		/*
+		 * expected result of ?a_foo_1 ^ A_foo_?a ^ ?b_bar_?b :
+		 * 
+		 * possible values for ?a = intersection of possible subjects with possible objects
+		 * possible values for ?a = the same
+		 * result = cartesian product of possible values for ?a and possible values for ?b
+		 * 
+		 * since objects are implicit numbers (no data structure to actually store them), intersection is non-empty only if a subject/predicate can be parsed to a number
+		 */
+		
+		Map<String, Set<Integer>> positionsPerVar = new HashMap<String,Set<Integer>>();
+
+		for (int j=0; j<filterArrays.length; j++){
+			for (int k=0; k<TopologyMain.FILTER_LENGTH; k++){
+				if (filterArrays[j][k].startsWith(TopologyMain.VAR_INDICATOR)){
+					
+					if (!positionsPerVar.containsKey(filterArrays[j][k]))
+						positionsPerVar.put(filterArrays[j][k], new HashSet<Integer>());
+					positionsPerVar.get(filterArrays[j][k]).add(k);
+				}
+			}
+		}
+		long expectedResultSize = 0;
+
+		if (!positionsPerVar.isEmpty()){
+			expectedResultSize = 1;
+
+			for (String var : positionsPerVar.keySet()){
+				Set<Integer> varPositions = positionsPerVar.get(var);
+				Set<String> possibleValues = new HashSet<String>();
+				if (varPositions.contains(0)) //i.e. if the variable appears in a subject position 
+					possibleValues.addAll(Toolbox.toList(TopologyMain.SUBJECTS));
+				if (varPositions.contains(1)) //predicate position
+					possibleValues.retainAll(Toolbox.toList(TopologyMain.PREDICATES));
+				if (varPositions.contains(2)) //object position
+					for (Iterator<String> iter=possibleValues.iterator(); iter.hasNext();)
+						try{
+							long l = Long.parseLong(iter.next());
+							if (l < 0 || l >= numOfObjects) //a number but not one that exists in the (implicit) object-set
+								iter.remove();
+						}catch (NumberFormatException e){
+							//not a number
+							iter.remove();
+						}
+						
+					
+				expectedResultSize*=possibleValues.size();
+			}
+		}
+		
+		return expectedResultSize;
+	}
+
+	public static long[] separateExpectedResultSizes(String[][] filterArrays, long numOfObjects) {
+		long[] results = new long[filterArrays.length];
+		for (int i=0; i<filterArrays.length; i++)
+			results[i] = expectedResultSize(new String[][]{filterArrays[i]}, numOfObjects);
+		return results;
+	}
 }
