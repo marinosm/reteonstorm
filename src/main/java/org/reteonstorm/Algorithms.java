@@ -46,10 +46,10 @@ public class Algorithms {
 				group.add(i);
 				continue filters;
 			}
-			//reached this point => filter couldn't be added to any of the existing groups
-			TreeSet<Integer> newGroup = new TreeSet<Integer>();
-			newGroup.add(i);
-			groupOfFilters.add(firstGroup);
+		//reached this point => filter couldn't be added to any of the existing groups
+		TreeSet<Integer> newGroup = new TreeSet<Integer>();
+		newGroup.add(i);
+		groupOfFilters.add(newGroup);
 		}
 
 		return groupOfFilters;
@@ -153,18 +153,18 @@ public class Algorithms {
 		 * expected result of ?a_foo_1 ^ A_foo_?a ^ ?b_bar_?b :
 		 * 
 		 * possible values for ?a = intersection of possible subjects with possible objects
-		 * possible values for ?a = the same
+		 * possible values for ?b = the same
 		 * result = cartesian product of possible values for ?a and possible values for ?b
 		 * 
 		 * since objects are implicit numbers (no data structure to actually store them), intersection is non-empty only if a subject/predicate can be parsed to a number
 		 */
-		
+
 		Map<String, Set<Integer>> positionsPerVar = new HashMap<String,Set<Integer>>();
 
 		for (int j=0; j<filterArrays.length; j++){
 			for (int k=0; k<TopologyMain.FILTER_LENGTH; k++){
 				if (filterArrays[j][k].startsWith(TopologyMain.VAR_INDICATOR)){
-					
+
 					if (!positionsPerVar.containsKey(filterArrays[j][k]))
 						positionsPerVar.put(filterArrays[j][k], new HashSet<Integer>());
 					positionsPerVar.get(filterArrays[j][k]).add(k);
@@ -179,26 +179,38 @@ public class Algorithms {
 			for (String var : positionsPerVar.keySet()){
 				Set<Integer> varPositions = positionsPerVar.get(var);
 				Set<String> possibleValues = new HashSet<String>();
+
 				if (varPositions.contains(0)) //i.e. if the variable appears in a subject position 
 					possibleValues.addAll(Toolbox.toList(TopologyMain.SUBJECTS));
+
 				if (varPositions.contains(1)) //predicate position
-					possibleValues.retainAll(Toolbox.toList(TopologyMain.PREDICATES));
+					if (possibleValues.isEmpty()){
+						possibleValues.addAll(Toolbox.toList(TopologyMain.PREDICATES));
+					}else{
+						possibleValues.retainAll(Toolbox.toList(TopologyMain.PREDICATES));
+					}
+
 				if (varPositions.contains(2)) //object position
-					for (Iterator<String> iter=possibleValues.iterator(); iter.hasNext();)
-						try{
-							long l = Long.parseLong(iter.next());
-							if (l < 0 || l >= numOfObjects) //a number but not one that exists in the (implicit) object-set
+					if (possibleValues.isEmpty()){
+						expectedResultSize*=numOfObjects;
+					}else{
+						//iterate over existing possible values and remove those that are not in the implicit object-set
+						for (Iterator<String> iter=possibleValues.iterator(); iter.hasNext();)
+							try{
+								long l = Long.parseLong(iter.next());
+								if (l < 0 || l >= numOfObjects) //a number but not one that exists in the (implicit) object-set
+									iter.remove();
+							}catch (NumberFormatException e){
+								//not a number
 								iter.remove();
-						}catch (NumberFormatException e){
-							//not a number
-							iter.remove();
-						}
-						
-					
-				expectedResultSize*=possibleValues.size();
+							}
+						expectedResultSize*=possibleValues.size();
+					}
+				else
+					expectedResultSize*=possibleValues.size();
 			}
 		}
-		
+
 		return expectedResultSize;
 	}
 

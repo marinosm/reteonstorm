@@ -68,7 +68,7 @@ public class TopologyMain {
 	/*
 	 * how long to wait after submitting the topology, before killing it (in seconds)
 	 */
-	protected static int TIME_TO_LIVE = 500;//15;//180;
+	protected static int TIME_TO_LIVE = 20;//15;//180;
 	/*
 	 * Whether to avoid creating identical filter Bolts (Named after "node sharing" in the Rete algorithm)
 	 * If this is true, only a single filter Bolt is created that emits to all Terminal Bolts
@@ -78,7 +78,7 @@ public class TopologyMain {
 	//	NOTHING("nothing"),SIMILAR("similar"),ALL_EMIT_EACH("all_emit_each"),ALL_EMIT_ONCE("all_emit_once");
 	//	private String which;
 	//	SHARE(String which){this.which=which;}
-	protected static SHARE filterSharing = SHARE.ALL;
+	protected static SHARE filterSharing = SHARE.NOTHING;
 	protected static boolean joinSharing = true;
 	/*
 	 * Subject-Predicate-Object filter. 
@@ -172,7 +172,6 @@ public class TopologyMain {
 			System.out.println("ExpectedResultSize0="+Algorithms.expectedResultSize(FILTER_ARRAYS, NUM_OF_OBJECTS));
 		}else{
 			GlobalStreamId[] streams = BoltAdder.addFilters(builder, FILTER_ARRAYS, filterSharing.equals(SHARE.SIMILAR));
-			//TODO adding joins without sharing should work.
 			BoltAdder.addCounterTerminals(builder, FILTER_ARRAYS, streams);
 			long[] expectedResultSizes = Algorithms.separateExpectedResultSizes(FILTER_ARRAYS, NUM_OF_OBJECTS);
 			for (int i=0; i<expectedResultSizes.length; i++)
