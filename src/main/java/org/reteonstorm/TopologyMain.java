@@ -14,31 +14,24 @@ import backtype.storm.utils.Utils;
 
 /**
  * This is to test whether there is measurable benefit in avoiding to create multiple identical Storm Bolts
- * (for now the identical filter Bolts consume identical input)
  * 
- * TODO: size of messages vs number of messages
- * TODO: how about sharing all filters? (Different gains on cluster?) 
- * TODO: tuning parallelism on real cluster
- * TODO: how about Joins? (each has different tuple source, their computation is more expensive, memory consumption affects completeness of result => don't just measure throughput)
- * TODO: filters could have different input source if filter after filter
- * TODO: experiment with Tasks as well. (Each thread calling one exec method and then another)
- * TODO: Fields grouping necessary for certain operations. In that case maybe higher parallelism is necessary
- * TODO: use various groupings to subscribe to the shared/duplicated node
- * TODO: if measuring wall-clock time then make sure there's no swapping.
- * TODO: investigate whether CounterTerminal is a bottleneck => increase parallelism + every x tuples received (and on cleanup), emit x_count (and later cleanup_count) to another Bolt that has parallelism=1 
- * TODO: maybe Kestrel tuple expiration can help when looking at data windows 
- * TODO: memory of zeroMQ
+ * TODO: add support for cross-products => need to detect and use allGrouping (e.g. ?a_foo_?b, ?c_bar_1)
+ * TODO: Add support for filter-after-filter if useful
+ * 
+ * TODO: does increasing parallelism (when using fieldsGrouping) decrease the memory requirements (window size) of each Bolt instance?
+ * 
+ * TODO: would be nice to measure lines in log file to confirm that actual number of messages increase/decrease
+ * TODO: would be nice to use an output queue to which all instances of the terminal bolt output triples to (a quick investigation showed that while all instances were emiting tuples, kestrel only saw those coming from one instance)
+ * TODO: tune parallelism on real cluster (including "parallelism_hint, number of tasks etc." both before deploying and at runtime)
+ * 
+ * TODO: time windows: kestrel&Storm tuple expiration time 
  * TODO: dynamically adding/removing queries
- * TODO: Let the user input the "query": What is the effort of detecting identical nodes in the query?
- * TODO: adjust parallelism at runtime 
- * TODO: consider more than 1 spouts
  * 
  * @author Marinos Mavrommatis
  *
  */
 public class TopologyMain {
 
-	//TODO some or all of this should be moved in individual BoltAdders 
 	public static final String INPUT_QUEUE = "inputQ";
 	public static final String OUTPUT_QUEUE = "outputQ";
 	public static final int KESTREL_THRIFT_PORT = 2229;
@@ -191,14 +184,7 @@ public class TopologyMain {
 
 		//check whether output queues contain the expected number of tuples
 		/* currently commented-out because using CounterTerminal instead
-		boolean resultsOK = true;
-		for (int i = 0; i < NUM_OF_IDENTICAL_NODES; i++){
-			long items = client.peek(OUTPUT_QUEUE+i).get_items();
-			System.out.println(OUTPUT_QUEUE+i+" contains "+items+" items");
-			if (items != expectedResultSize)
-				resultsOK=false;
-		}
-		System.out.println("Results_OK="+resultsOK);
+		long items = client.peek(OUTPUT_QUEUE).get_items();
 		 */
 
 		client.close();
